@@ -47,7 +47,7 @@ pip install -r requirements.txt
 ./start.sh --port 9000
 ```
 
-ブラウザで `http://localhost:8888` にアクセス。
+ブラウザで `http://localhost:8889` にアクセス。
 
 ### 環境変数 (.env)
 
@@ -57,7 +57,7 @@ OPENAI_BASE_URL=http://localhost:11434/v1
 OPENAI_API_KEY=YOUR_KEY
 OPENAI_CHAT_MODEL=gemma3:latest
 HOST=0.0.0.0
-PORT=8888
+PORT=8889
 ```
 
 ## 構成

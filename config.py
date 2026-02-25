@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     
     # サーバー設定
     host: str = "0.0.0.0"
-    port: int = 8888
+    port: int = 8889
     debug: bool = True
     
     # ポーリング設定
