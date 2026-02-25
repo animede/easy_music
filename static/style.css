@@ -116,6 +116,27 @@ body::after {
     background: rgba(124, 92, 252, 0.08);
 }
 
+/* ---------- Language Toggle ---------- */
+.lang-toggle-btn {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-glass);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    backdrop-filter: blur(8px);
+    letter-spacing: 0.03em;
+}
+.lang-toggle-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-focus);
+    background: rgba(124, 92, 252, 0.12);
+    box-shadow: 0 0 12px var(--primary-glow);
+}
+
 /* ---------- Sections ---------- */
 .simple-section {
     margin-bottom: 24px;

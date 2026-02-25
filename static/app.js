@@ -1,9 +1,198 @@
 /**
- * ACE-Step Simple Mode — 自己完結 JavaScript
- * app.js への依存ゼロ。分離時はこのファイルだけ持っていける。
+ * Easy Music — AI Music Generator
+ * Self-contained JavaScript with i18n (JA/EN) support.
  */
 
-console.log('ACE-Step simple.js loaded');
+console.log('Easy Music app.js loaded');
+
+// =============================================================================
+// i18n — 日英切替
+// =============================================================================
+
+let currentUILang = localStorage.getItem('easymusic_uilang') || 'ja';
+
+const I18N = {
+    ja: {
+        // Labels
+        label_theme: 'テーマ / シナリオ',
+        label_lyrics: '歌詞（空欄ならAIが自動生成）',
+        label_genre: 'ジャンル',
+        label_duration: '長さ',
+        label_language: '言語',
+        label_inst: '楽器のみ',
+        label_builtin_caption: 'キャプション自動',
+        btn_debug: '詳細情報',
+        btn_debug_open: '詳細情報 ▲',
+        btn_generate: '🎵 音楽を生成',
+        btn_generating: '<span class="spinner"></span> 生成中...',
+        title_download: 'ダウンロード',
+        overlay_hint: 'タップで閉じる',
+        // Placeholders
+        placeholder_theme: '例: 夜空を見上げて願いを込める魔法少女の物語',
+        placeholder_lyrics: '[verse]\n星の海に浮かぶ願いが\n夜空を駆け巡る\n\n[chorus]\n輝く未来へ...',
+        // Duration options
+        dur_30: '30秒', dur_45: '45秒', dur_60: '60秒', dur_90: '90秒',
+        dur_120: '120秒', dur_180: '180秒', dur_240: '240秒', dur_300: '300秒',
+        // Genre labels (Japanese unique)
+        genre_70s: '70年代歌謡曲', genre_80s: '80年代フォーク', genre_90s: '90年代J-POP',
+        genre_newmusic: 'ニューミュージック',
+        genre_vocaloid: 'ボカロ', genre_anison: 'アニソン', genre_douyou: '童謡',
+        genre_enka: '演歌', genre_minyo: '民謡',
+        genre_mood: 'ムード', genre_driving: 'ドライビング',
+        genre_bossanova: 'ボサノバ', genre_citypop: 'シティポップ',
+        genre_chanson: 'シャンソン', genre_folklore: 'フォルクローレ',
+        genre_reggaeton: 'レゲトン',
+        // Debug panel
+        debug_genre: 'ジャンル', debug_theme: 'テーマ', debug_mode: 'モード',
+        debug_tags: 'タグ (raw)', debug_caption: 'キャプション',
+        debug_lang: '言語', debug_params: 'パラメータ',
+        // Status messages
+        status_no_input: 'テーマ、歌詞、またはジャンルのいずれかを入力してください',
+        status_theme_gen: '💡 テーマを生成中...',
+        status_lyrics_gen: '歌詞を生成中...',
+        status_lyrics_ai: '📝 AI作詞中...（外部LLM接続不可時はローカルLLMで生成）',
+        status_lyrics_fail: '⚠️ 歌詞生成に失敗、ACE-Stepが内部生成します...',
+        status_caption_gen: 'キャプション生成中...',
+        status_caption_ai: '🎵 キャプションを生成中...',
+        status_enhance: 'AI強化中...',
+        status_enhance_ai: '✨ AI強化中（ACE-Step内蔵LLM）...',
+        status_task_create: 'タスク作成中...',
+        status_generating: '🎵 音楽を生成中...',
+        status_complete: '曲 生成完了！',
+        status_fail: '生成に失敗しました',
+        status_fail_server: '生成に失敗しました（サーバーエラー）',
+        status_fail_retry: '生成に失敗しました。しばらく待ってから再試行してください。',
+        status_task_fail: 'タスク作成失敗',
+        status_timeout: 'タイムアウト',
+        status_error: '❌ エラー: ',
+        status_unknown: '不明なエラー',
+        // Progress phases
+        phase_prep: '準備中...',
+        phase_gen: '音楽を生成中 🎵',
+        phase_finish: '仕上げ中...',
+        phase_final: '最終処理中（もう少し）...',
+        // Debug mode text
+        mode_builtin: 'キャプション自動',
+        mode_llm: '外部LLM生成',
+        mode_inst: '楽器のみ',
+        mode_enhanced: '✅ AI強化済み',
+        mode_skipped: '⚠️ AI強化スキップ',
+        mode_no_genre: '(未選択)',
+        mode_no_theme: '(なし)',
+        mode_no_tags: '(タグなし — 外部LLMがキャプション全文を生成)',
+        // Footer (not dynamic, stays in HTML)
+    },
+    en: {
+        label_theme: 'Theme / Scenario',
+        label_lyrics: 'Lyrics (leave blank for AI auto-generation)',
+        label_genre: 'Genre',
+        label_duration: 'Duration',
+        label_language: 'Language',
+        label_inst: 'Instrumental',
+        label_builtin_caption: 'Auto Caption',
+        btn_debug: 'Details',
+        btn_debug_open: 'Details ▲',
+        btn_generate: '🎵 Generate Music',
+        btn_generating: '<span class="spinner"></span> Generating...',
+        title_download: 'Download',
+        overlay_hint: 'Tap to close',
+        placeholder_theme: 'e.g. A magical girl gazing at the night sky, making a wish',
+        placeholder_lyrics: '[verse]\nWishes floating in a sea of stars\nRacing across the night sky\n\n[chorus]\nToward a shining future...',
+        dur_30: '30s', dur_45: '45s', dur_60: '60s', dur_90: '90s',
+        dur_120: '120s', dur_180: '180s', dur_240: '240s', dur_300: '300s',
+        genre_70s: "70's Kayokyoku", genre_80s: "80's Folk", genre_90s: "90's J-POP",
+        genre_newmusic: 'New Music',
+        genre_vocaloid: 'Vocaloid', genre_anison: 'Anime Song', genre_douyou: "Children's",
+        genre_enka: 'Enka', genre_minyo: "Min'yo",
+        genre_mood: 'Mood', genre_driving: 'Driving',
+        genre_bossanova: 'Bossa Nova', genre_citypop: 'City Pop',
+        genre_chanson: 'Chanson', genre_folklore: 'Folklore',
+        genre_reggaeton: 'Reggaeton',
+        debug_genre: 'Genre', debug_theme: 'Theme', debug_mode: 'Mode',
+        debug_tags: 'Tags (raw)', debug_caption: 'Caption',
+        debug_lang: 'Language', debug_params: 'Parameters',
+        status_no_input: 'Please enter a theme, lyrics, or select a genre',
+        status_theme_gen: '💡 Generating theme...',
+        status_lyrics_gen: 'Generating lyrics...',
+        status_lyrics_ai: '📝 AI writing lyrics... (falls back to local LLM if external unavailable)',
+        status_lyrics_fail: '⚠️ Lyrics generation failed, ACE-Step will generate internally...',
+        status_caption_gen: 'Generating caption...',
+        status_caption_ai: '🎵 Generating caption...',
+        status_enhance: 'AI enhancing...',
+        status_enhance_ai: '✨ AI enhancing (ACE-Step built-in LLM)...',
+        status_task_create: 'Creating task...',
+        status_generating: '🎵 Generating music...',
+        status_complete: ' track(s) generated!',
+        status_fail: 'Generation failed',
+        status_fail_server: 'Generation failed (server error)',
+        status_fail_retry: 'Generation failed. Please wait and try again.',
+        status_task_fail: 'Task creation failed',
+        status_timeout: 'Timeout',
+        status_error: '❌ Error: ',
+        status_unknown: 'Unknown error',
+        phase_prep: 'Preparing...',
+        phase_gen: 'Generating music 🎵',
+        phase_finish: 'Finishing up...',
+        phase_final: 'Final processing (almost done)...',
+        mode_builtin: 'Auto Caption',
+        mode_llm: 'External LLM',
+        mode_inst: 'Instrumental',
+        mode_enhanced: '✅ AI Enhanced',
+        mode_skipped: '⚠️ AI Enhancement Skipped',
+        mode_no_genre: '(none)',
+        mode_no_theme: '(none)',
+        mode_no_tags: '(no tags — external LLM generated full caption)',
+    }
+};
+
+/** Get translation for key */
+function t(key) {
+    return (I18N[currentUILang] && I18N[currentUILang][key]) || (I18N.ja[key]) || key;
+}
+
+/** Apply translations to all data-i18n elements */
+function applyI18n() {
+    // textContent
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        const val = t(key);
+        if (el.tagName === 'OPTION') {
+            el.textContent = val;
+        } else if (el.innerHTML.includes('<span class="spinner">')) {
+            // Skip — button is in generating state
+        } else {
+            el.textContent = val;
+        }
+    });
+    // placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+    });
+    // title attributes
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        el.title = t(el.getAttribute('data-i18n-title'));
+    });
+    // Update toggle button text
+    const toggleBtn = document.getElementById('lang-toggle-btn');
+    if (toggleBtn) {
+        toggleBtn.textContent = currentUILang === 'ja' ? '🌐 EN' : '🌐 JP';
+    }
+    // Update page title
+    document.title = currentUILang === 'ja' ? 'Easy Music — AI音楽生成' : 'Easy Music — AI Music Generator';
+}
+
+/** Toggle UI language */
+function toggleUILang() {
+    currentUILang = currentUILang === 'ja' ? 'en' : 'ja';
+    localStorage.setItem('easymusic_uilang', currentUILang);
+    applyI18n();
+    // Update debug button text if panel is open
+    const panel = document.getElementById('debug-panel');
+    const btn = document.getElementById('debug-info-btn');
+    if (panel && btn && !panel.classList.contains('collapsed')) {
+        btn.textContent = t('btn_debug_open');
+    }
+}
 
 // =============================================================================
 // State
@@ -23,10 +212,10 @@ function toggleDebugPanel() {
     const btn = document.getElementById('debug-info-btn');
     panel.classList.toggle('collapsed');
     if (panel.classList.contains('collapsed')) {
-        btn.textContent = '詳細情報';
+        btn.textContent = t('btn_debug');
         btn.classList.remove('active');
     } else {
-        btn.textContent = '詳細情報 ▲';
+        btn.textContent = t('btn_debug_open');
         btn.classList.add('active');
     }
 }
@@ -155,10 +344,10 @@ function smoothProgress(elapsedSec, expectedSec) {
 
 function getProgressPhaseText(elapsedSec, expectedSec) {
     const ratio = elapsedSec / expectedSec;
-    if (ratio < 0.15) return '準備中...';
-    if (ratio < 0.85) return '音楽を生成中 🎵';
-    if (ratio < 1.0) return '仕上げ中...';
-    return '最終処理中（もう少し）...';
+    if (ratio < 0.15) return t('phase_prep');
+    if (ratio < 0.85) return t('phase_gen');
+    if (ratio < 1.0) return t('phase_finish');
+    return t('phase_final');
 }
 
 function formatTime(sec) {
@@ -276,19 +465,19 @@ async function generateSimple() {
     const isInst = document.getElementById('simple-inst').checked;
 
     if (!theme && !lyrics && !selectedGenre) {
-        showSimpleStatus('テーマ、歌詞、またはジャンルのいずれかを入力してください', 'error');
+        showSimpleStatus(t('status_no_input'), 'error');
         return;
     }
 
     const btn = document.getElementById('simple-generate-btn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> 生成中...';
+    btn.innerHTML = t('btn_generating');
     hideSimpleStatus();
 
     try {
         // ---- Step 0: テーマ自動生成（テーマ・歌詞が空でジャンル選択済み） ----
         if (!theme && !lyrics && selectedGenre) {
-            showSimpleStatus('💡 テーマを生成中...', 'info');
+            showSimpleStatus(t('status_theme_gen'), 'info');
             try {
                 const themeResult = await apiRequest('/api/theme', 'POST', {
                     genre: selectedGenre.name,
@@ -315,8 +504,8 @@ async function generateSimple() {
         } else if (!lyrics) {
             // 歌詞が空 → AI作詞
             console.log('[EasyMusic] Step1: lyrics empty → generating via API...');
-            showSimpleProgress(0, '歌詞を生成中...');
-            showSimpleStatus('📝 AI作詞中...（外部LLM接続不可時はローカルLLMで生成）', 'info');
+            showSimpleProgress(0, t('status_lyrics_gen'));
+            showSimpleStatus(t('status_lyrics_ai'), 'info');
             try {
                 const lyricsResult = await apiRequest('/api/lyrics', 'POST', {
                     theme: theme || (selectedGenre ? selectedGenre.name : ''),
@@ -332,7 +521,7 @@ async function generateSimple() {
                 }
             } catch (lyricsErr) {
                 console.error('[EasyMusic] Step1: lyrics generation failed:', lyricsErr);
-                showSimpleStatus('⚠️ 歌詞生成に失敗、ACE-Stepが内部生成します...', 'info');
+                showSimpleStatus(t('status_lyrics_fail'), 'info');
                 await sleep(1500);
             }
         } else {
@@ -363,8 +552,8 @@ async function generateSimple() {
                 caption = 'instrumental, no vocals, ' + caption;
             }
         } else if (selectedGenre) {
-            showSimpleProgress(2, 'キャプション生成中...');
-            showSimpleStatus('🎵 キャプションを生成中...', 'info');
+            showSimpleProgress(2, t('status_caption_gen'));
+            showSimpleStatus(t('status_caption_ai'), 'info');
             try {
                 const capResult = await apiRequest('/api/caption', 'POST', {
                     theme: theme,
@@ -381,7 +570,7 @@ async function generateSimple() {
                 caption = selectedGenre.hint || selectedGenre.name;
             }
         } else if (theme) {
-            showSimpleProgress(2, 'キャプション生成中...');
+            showSimpleProgress(2, t('status_caption_gen'));
             try {
                 const capResult = await apiRequest('/api/caption', 'POST', {
                     theme: theme,
@@ -417,8 +606,8 @@ async function generateSimple() {
         // ---- Step 2.7: AI強化 (format_input) ----
         // ACE-Step内蔵LLMでキャプション・歌詞をさらに強化
         let formatInputResult = null;
-        showSimpleProgress(3, 'AI強化中...');
-        showSimpleStatus('✨ AI強化中（ACE-Step内蔵LLM）...', 'info');
+        showSimpleProgress(3, t('status_enhance'));
+        showSimpleStatus(t('status_enhance_ai'), 'info');
         try {
             formatInputResult = await apiRequest('/api/format_input', 'POST', {
                 prompt: caption,
@@ -441,8 +630,8 @@ async function generateSimple() {
         }
 
         // ---- Step 3: 音楽生成 ----
-        showSimpleProgress(5, 'タスク作成中...');
-        showSimpleStatus('🎵 音楽を生成中...', 'info');
+        showSimpleProgress(5, t('status_task_create'));
+        showSimpleStatus(t('status_generating'), 'info');
 
         const params = {
             prompt: caption || (selectedGenre ? selectedGenre.name : theme),
@@ -468,13 +657,13 @@ async function generateSimple() {
 
         // デバッグパネル更新
         const formatInfo = formatInputResult && formatInputResult.success
-            ? '✅ AI強化済み' + (params.bpm ? ' / BPM=' + params.bpm : '') + (params.key_scale ? ' / Key=' + params.key_scale : '') + (params.time_signature && params.time_signature !== '4' ? ' / 拍子=' + params.time_signature : '')
-            : '⚠️ AI強化スキップ';
+            ? t('mode_enhanced') + (params.bpm ? ' / BPM=' + params.bpm : '') + (params.key_scale ? ' / Key=' + params.key_scale : '') + (params.time_signature && params.time_signature !== '4' ? ' / Time=' + params.time_signature : '')
+            : t('mode_skipped');
         updateDebugPanel({
-            genre: selectedGenre ? selectedGenre.name : '(未選択)',
-            theme: theme || '(なし)',
-            mode: (useBuiltinCaption ? 'キャプション自動' : '外部LLM生成') + (isInst ? ' / 楽器のみ' : '') + ' / ' + formatInfo,
-            tags: rawTags || '(タグなし — 外部LLMがキャプション全文を生成)',
+            genre: selectedGenre ? selectedGenre.name : t('mode_no_genre'),
+            theme: theme || t('mode_no_theme'),
+            mode: (useBuiltinCaption ? t('mode_builtin') : t('mode_llm')) + (isInst ? ' / ' + t('mode_inst') : '') + ' / ' + formatInfo,
+            tags: rawTags || t('mode_no_tags'),
             caption: params.prompt,
             lang: selectedLangName + ' (' + selectedLangCode + ')' + (isInst ? ' → instrumental' : ''),
             params: 'steps=' + params.inference_steps + ' / guidance=' + params.guidance_scale + ' / duration=' + params.audio_duration + 's / thinking=' + params.thinking + ' / cot_caption=true / cot_lang=true' + (params.bpm ? ' / bpm=' + params.bpm : '') + (params.key_scale ? ' / key=' + params.key_scale : '')
@@ -482,7 +671,7 @@ async function generateSimple() {
 
         const createResult = await apiRequest('/api/generate', 'POST', params);
         const taskId = createResult.task_id;
-        if (!taskId) throw new Error('タスク作成失敗');
+        if (!taskId) throw new Error(t('status_task_fail'));
 
         const expectedTime = estimateGenerationTime(params);
         const maxPolls = 300;
@@ -498,23 +687,23 @@ async function generateSimple() {
             } catch (_) { continue; }
 
             if (statusResult.status === 1) {
-                showSimpleProgress(100, '完了！');
+                showSimpleProgress(100, currentUILang === 'ja' ? '完了！' : 'Done!');
                 if (statusResult.results && statusResult.results.length > 0) {
                     currentResults = statusResult.results;
                     currentLyrics = effectiveLyrics;
                     showInlinePlayer();
                     playSimpleTrack(0);
-                    showSimpleStatus(`✅ ${currentResults.length}曲 生成完了！`, 'success');
+                    showSimpleStatus(`✅ ${currentResults.length}${t('status_complete')}`, 'success');
                 }
                 hideSimpleProgress();
                 return;
             } else if (statusResult.status === 2) {
                 // エラーメッセージからJSON文字列を除去して読みやすくする
-                let errMsg = statusResult.error || '生成に失敗しました';
+                let errMsg = statusResult.error || t('status_fail');
                 try {
                     const parsed = JSON.parse(errMsg);
                     if (Array.isArray(parsed) || typeof parsed === 'object') {
-                        errMsg = '生成に失敗しました（サーバーエラー）';
+                        errMsg = t('status_fail_server');
                     }
                 } catch (_) { /* not JSON, use as-is */ }
                 throw new Error(errMsg);
@@ -525,24 +714,24 @@ async function generateSimple() {
             showSimpleProgress(progress, progressText);
         }
 
-        throw new Error('タイムアウト');
+        throw new Error(t('status_timeout'));
 
     } catch (e) {
         // エラーメッセージをユーザーフレンドリーに整形
-        let errMsg = e.message || '不明なエラー';
+        let errMsg = e.message || t('status_unknown');
         // JSON文字列がそのまま含まれていたら除去
         if (errMsg.includes('[{') || errMsg.includes('{"')) {
-            errMsg = '生成に失敗しました。しばらく待ってから再試行してください。';
+            errMsg = t('status_fail_retry');
         }
         // 長すぎるメッセージは切り詰め
         if (errMsg.length > 100) {
             errMsg = errMsg.substring(0, 100) + '…';
         }
-        showSimpleStatus('❌ エラー: ' + errMsg, 'error');
+        showSimpleStatus(t('status_error') + errMsg, 'error');
         hideSimpleProgress();
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '🎵 音楽を生成';
+        btn.innerHTML = t('btn_generate');
     }
 }
 
@@ -809,7 +998,8 @@ function initOverlay() {
 // =============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('ACE-Step Simple Mode initialized');
+    console.log('Easy Music initialized');
+    applyI18n();
     initGenreGrid();
     initAudioSync();
     initOverlay();
