@@ -297,8 +297,13 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     if (data) options.body = JSON.stringify(data);
     const res = await fetch(endpoint, options);
     if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errText}`);
+        let errText = await res.text();
+        // JSON detail を取り出す（FastAPI HTTPException 形式）
+        try {
+            const parsed = JSON.parse(errText);
+            if (parsed.detail) errText = parsed.detail;
+        } catch (_) {}
+        throw new Error(errText);
     }
     return res.json();
 }

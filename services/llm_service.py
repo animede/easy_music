@@ -276,13 +276,29 @@ Mood: {mood or 'match the theme'}
 Generate complete song lyrics with structure tags.
 IMPORTANT: Do NOT add romanization or pronunciation in parentheses. Output lyrics in {language} ONLY."""
         
-        response = await self.chat(
-            user_message=prompt,
-            system_prompt=LYRICS_GENERATE_SYSTEM_PROMPT,
-            temperature=0.85
-        )
+        # 最大2回試行（ローカルLLMがJSONのみ出力した場合のリトライ）
+        for attempt in range(2):
+            response = await self.chat(
+                user_message=prompt,
+                system_prompt=LYRICS_GENERATE_SYSTEM_PROMPT,
+                temperature=0.85
+            )
+            
+            result = self._parse_lyrics_response(response)
+            
+            # 歌詞が空 or 構造タグが無い場合はリトライ
+            if result["lyrics"] and "[" in result["lyrics"]:
+                return result
+            
+            if attempt == 0:
+                logger.warning(
+                    "歌詞生成: 歌詞が空または構造タグ不足（リトライします）response=%s",
+                    response[:200]
+                )
         
-        return self._parse_lyrics_response(response)
+        # 2回とも失敗 → 結果をそのまま返す（空でもフロントで対処可能）
+        logger.warning("歌詞生成: リトライ後も歌詞が不十分です")
+        return result
     
     def _parse_lyrics_response(self, response: str) -> Dict[str, Any]:
         """歌詞レスポンスをパース"""
@@ -295,6 +311,7 @@ IMPORTANT: Do NOT add romanization or pronunciation in parentheses. Output lyric
         }
         lyrics_start = 0
         
+        # --- Case 1: 1行JSON ---
         for i, line in enumerate(lines):
             line = line.strip()
             if line.startswith("{") and "recommended_duration" in line:
@@ -302,6 +319,25 @@ IMPORTANT: Do NOT add romanization or pronunciation in parentheses. Output lyric
                     metadata = json.loads(line)
                     lyrics_start = i + 1
                     break
+                except json.JSONDecodeError:
+                    pass
+        
+        # --- Case 2: 複数行JSON（ローカルLLMが整形出力する場合） ---
+        # lyrics_start が 0 のままならテキスト全体から複数行JSONブロックを探す
+        if lyrics_start == 0:
+            full_text = response.strip()
+            json_match = re.search(
+                r'(\{[^{}]*"recommended_duration"[^{}]*\})',
+                full_text,
+                re.DOTALL,
+            )
+            if json_match:
+                try:
+                    metadata = json.loads(json_match.group(1))
+                    # JSONブロック終端以降を歌詞とする
+                    after_json = full_text[json_match.end():]
+                    lines = after_json.strip().split("\n")
+                    lyrics_start = 0
                 except json.JSONDecodeError:
                     pass
         

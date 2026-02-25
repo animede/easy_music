@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import asyncio
+import logging
 import re
 import httpx
 
@@ -181,6 +182,17 @@ async def generate_music(request: GenerateRequest):
             queue_position=data.get("queue_position")
         )
     
+    except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+        logging.getLogger("uvicorn.error").error(
+            "ACE-Step API 接続失敗 (%s): %s", settings.ace_step_api_url, e
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=f"ACE-Step APIに接続できません ({settings.ace_step_api_url})。"
+                   f" --ace-url オプションでACE-Step APIのURLを指定してください。"
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -539,6 +551,15 @@ async def generate_cover(
             message="Cover task created successfully",
             queue_position=data.get("queue_position")
         )
+    except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+        logging.getLogger("uvicorn.error").error(
+            "ACE-Step API 接続失敗 (%s): %s", settings.ace_step_api_url, e
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=f"ACE-Step APIに接続できません ({settings.ace_step_api_url})。"
+                   f" --ace-url オプションでACE-Step APIのURLを指定してください。"
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -629,6 +650,15 @@ async def generate_repaint(
             task_id=task_id,
             status="queued",
             message="Repaint task created successfully"
+        )
+    except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+        logging.getLogger("uvicorn.error").error(
+            "ACE-Step API 接続失敗 (%s): %s", settings.ace_step_api_url, e
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=f"ACE-Step APIに接続できません ({settings.ace_step_api_url})。"
+                   f" --ace-url オプションでACE-Step APIのURLを指定してください。"
         )
     except HTTPException:
         raise
