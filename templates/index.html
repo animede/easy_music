@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Music — AI音楽生成</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="/static/style.css?v=20260225b">
+</head>
+<body>
+    <div class="simple-container">
+        <!-- ヘッダー -->
+        <header class="simple-header">
+            <div class="header-left">
+                <h1>🎵 Easy Music</h1>
+            </div>
+
+        </header>
+
+        <!-- テーマ入力 -->
+        <section class="simple-section">
+            <label class="section-label" for="simple-theme">テーマ / シナリオ</label>
+            <input type="text" id="simple-theme" class="simple-input"
+                   placeholder="例: 夜空を見上げて願いを込める魔法少女の物語">
+        </section>
+
+        <!-- 歌詞入力 -->
+        <section class="simple-section">
+            <label class="section-label" for="simple-lyrics">歌詞（空欄ならAIが自動生成）</label>
+            <textarea id="simple-lyrics" class="simple-textarea"
+                      placeholder="[verse]&#10;星の海に浮かぶ願いが&#10;夜空を駆け巡る&#10;&#10;[chorus]&#10;輝く未来へ..."></textarea>
+        </section>
+
+        <!-- ジャンル選択タイル -->
+        <section class="simple-section">
+            <label class="section-label">ジャンル</label>
+            <div class="genre-grid" id="genre-grid">
+                <!-- 洋楽メジャー -->
+                <button class="genre-tile" data-genre="J-POP" data-caption-hint="J-POP, Japanese pop, catchy melody, bright, emotional vocal, polished production">
+                    <img class="genre-img" src="/static/image/J-pop.png" alt="J-POP"><span class="genre-label">J-POP</span>
+                </button>
+                <button class="genre-tile" data-genre="Rock" data-caption-hint="Rock, guitar-driven, energetic, powerful">
+                    <img class="genre-img" src="/static/image/Rock.png" alt="Rock"><span class="genre-label">Rock</span>
+                </button>
+                <button class="genre-tile" data-genre="Jazz" data-caption-hint="Jazz, smooth, improvisational, sophisticated">
+                    <img class="genre-img" src="/static/image/jazz.png" alt="Jazz"><span class="genre-label">Jazz</span>
+                </button>
+                <button class="genre-tile" data-genre="Electronic" data-caption-hint="Electronic, synth, dance, digital">
+                    <img class="genre-img" src="/static/image/Electoric.png" alt="Electronic"><span class="genre-label">Electronic</span>
+                </button>
+                <button class="genre-tile" data-genre="R&B" data-caption-hint="R&B, soulful, smooth, groove">
+                    <img class="genre-img" src="/static/image/R%26D.png" alt="R&B"><span class="genre-label">R&B</span>
+                </button>
+                <button class="genre-tile" data-genre="Hip-Hop" data-caption-hint="Hip-Hop, rhythmic, rap, beats">
+                    <img class="genre-img" src="/static/image/Hip-Hop.png" alt="Hip-Hop"><span class="genre-label">Hip-Hop</span>
+                </button>
+                <button class="genre-tile" data-genre="Country" data-caption-hint="Country music, acoustic guitar, banjo, fiddle, steel guitar, warm storytelling vocals, heartfelt and honest, Nashville sound">
+                    <img class="genre-img" src="/static/image/Country.png" alt="Country"><span class="genre-label">Country</span>
+                </button>
+                <button class="genre-tile" data-genre="Folk" data-caption-hint="Folk, acoustic, warm, storytelling">
+                    <img class="genre-img" src="/static/image/Folk.png" alt="Folk"><span class="genre-label">Folk</span>
+                </button>
+                <!-- 年代系 -->
+                <button class="genre-tile" data-genre="70s Kayokyoku" data-caption-hint="1970s Japanese Kayokyoku, retro, nostalgic, analog, dramatic vocal, orchestral arrangement">
+                    <img class="genre-img" src="/static/image/70%E5%B9%B4%E4%BB%A3%E6%AD%8C%E8%AC%A1%E6%9B%B2.png" alt="70年代歌謡曲"><span class="genre-label">70年代歌謡曲</span>
+                </button>
+                <button class="genre-tile" data-genre="80s Folk" data-caption-hint="1980s Japanese folk pop, acoustic guitar, warm analog recording, singer-songwriter, poetic, nostalgic">
+                    <img class="genre-img" src="/static/image/80%E5%B9%B4%E4%BB%A3%E3%83%95%E3%82%A9%E3%83%BC%E3%82%AF.png" alt="80年代フォーク"><span class="genre-label">80年代フォーク</span>
+                </button>
+                <button class="genre-tile" data-genre="90s J-POP" data-caption-hint="1990s J-POP, bright, emotional, catchy melody, band sound, Japanese pop golden era">
+                    <img class="genre-img" src="/static/image/90%E5%B9%B4%E4%BB%A3J-POP.png" alt="90年代J-POP"><span class="genre-label">90年代J-POP</span>
+                </button>
+                <button class="genre-tile" data-genre="New Music" data-caption-hint="Japanese New Music, singer-songwriter, poetic, mellow, 1970s-1980s acoustic pop">
+                    <img class="genre-img" src="/static/image/%E3%83%A6%E3%83%BC%E3%83%9F%E3%83%A5%E3%83%BC%E3%82%B8%E3%83%83%E3%82%AF.png" alt="ニューミュージック"><span class="genre-label">ニューミュージック</span>
+                </button>
+                <!-- 日本特化 -->
+                <button class="genre-tile" data-genre="Vocaloid" data-caption-hint="Vocaloid, synthetic voice, electronic, fast tempo, digital, futuristic Japanese pop">
+                    <img class="genre-img" src="/static/image/%E3%83%9C%E3%82%AB%E3%83%AD.png" alt="ボカロ"><span class="genre-label">ボカロ</span>
+                </button>
+                <button class="genre-tile" data-genre="Anime Song" data-caption-hint="Anime song, dramatic, energetic, emotional, opening theme, Japanese anime soundtrack">
+                    <img class="genre-img" src="/static/image/%E3%82%A2%E3%83%8B%E3%82%BD%E3%83%B3.png" alt="アニソン"><span class="genre-label">アニソン</span>
+                </button>
+                <button class="genre-tile" data-genre="Children's Song" data-caption-hint="Japanese children's song, gentle, simple, warm, nursery rhyme, innocent, acoustic">
+                    <img class="genre-img" src="/static/image/%E7%AB%A5%E8%AC%A1.png" alt="童謡"><span class="genre-label">童謡</span>
+                </button>
+                <button class="genre-tile" data-genre="Enka" data-caption-hint="Enka, traditional Japanese ballad, melancholic, vibrato, emotional, shamisen, koto">
+                    <img class="genre-img" src="/static/image/%E6%BC%94%E6%AD%8C.png" alt="演歌"><span class="genre-label">演歌</span>
+                </button>
+                <button class="genre-tile" data-genre="Min'yo" data-caption-hint="Japanese Min'yo folk song, traditional, regional, shakuhachi, taiko, pentatonic scale">
+                    <img class="genre-img" src="/static/image/%E6%B0%91%E8%AC%A1.png" alt="民謡"><span class="genre-label">民謡</span>
+                </button>
+                <!-- ムード系 -->
+                <button class="genre-tile" data-genre="Trance" data-caption-hint="Trance, purely instrumental, uplifting synth pads, euphoric build-ups and breakdowns, driving bassline, arpeggiated leads, 138 BPM, ethereal atmosphere, soaring melodies, no vocals" data-force-inst="true">
+                    <img class="genre-img" src="/static/image/Trance.png" alt="Trance"><span class="genre-label">Trance</span>
+                </button>
+                <button class="genre-tile" data-genre="Mood" data-caption-hint="Mood lounge music, purely instrumental, smooth jazz with mellow saxophone, warm electric piano chords, subtle brushed drums and walking bass, romantic and sophisticated, late night ambiance, medium slow tempo, polished production, no vocals" data-force-inst="true">
+                    <img class="genre-img" src="/static/image/%E3%83%A0%E3%83%BC%E3%83%89.png" alt="ムード"><span class="genre-label">ムード</span>
+                </button>
+                <button class="genre-tile" data-genre="Driving" data-caption-hint="Refreshing driving music, purely instrumental, bright acoustic guitar and clean electric guitar, light upbeat drums, moderate tempo around 110 BPM, warm bass, breezy and uplifting, coastal highway sunshine, open windows breeze, no vocals" data-force-inst="true">
+                    <img class="genre-img" src="/static/image/%E3%83%89%E3%83%A9%E3%82%A4%E3%83%93%E3%83%B3%E3%82%B0.png" alt="ドライビング"><span class="genre-label">ドライビング</span>
+                </button>
+                <button class="genre-tile" data-genre="Acoustic Pop" data-caption-hint="Acoustic pop, warm fingerpicking acoustic guitar, gentle vocals, light percussion, simple and intimate arrangement, cafe atmosphere, singer-songwriter style">
+                    <img class="genre-img" src="/static/image/Acoustic%20Pop.png" alt="Acoustic Pop"><span class="genre-label">Acoustic Pop</span>
+                </button>
+                <button class="genre-tile" data-genre="Bossa Nova" data-caption-hint="Bossa nova, Brazilian jazz, gentle acoustic guitar, soft percussion, warm, relaxed, cafe, sophisticated rhythm">
+                    <img class="genre-img" src="/static/image/%E3%83%9C%E3%82%B5%E3%83%8E%E3%83%90.png" alt="ボサノバ"><span class="genre-label">ボサノバ</span>
+                </button>
+                <button class="genre-tile" data-genre="Lo-Fi" data-caption-hint="Lo-fi hip hop, chill beats, vinyl crackle, mellow piano, warm bass, relaxing, study music, nostalgic, tape saturation">
+                    <img class="genre-img" src="/static/image/Lo-Fi.png" alt="Lo-Fi"><span class="genre-label">Lo-Fi</span>
+                </button>
+                <button class="genre-tile" data-genre="City Pop" data-caption-hint="City pop, 1980s Japanese pop, funky bass, bright synth, groovy, urban, polished production, AOR influence, summer night">
+                    <img class="genre-img" src="/static/image/%E3%82%B7%E3%83%86%E3%82%A3%E3%83%9D%E3%83%83%E3%83%97.png" alt="シティポップ"><span class="genre-label">シティポップ</span>
+                </button>
+                <!-- ワールド系 -->
+                <button class="genre-tile" data-genre="Chanson" data-caption-hint="French chanson, romantic, accordion musette, gentle acoustic guitar, expressive vocal with vibrato, Parisian cafe atmosphere, poetic lyrics, warm and intimate, waltz rhythm, nostalgic European charm">
+                    <img class="genre-img" src="/static/image/%E3%82%B7%E3%83%A3%E3%83%B3%E3%82%BD%E3%83%B3.png" alt="シャンソン"><span class="genre-label">シャンソン</span>
+                </button>
+                <button class="genre-tile" data-genre="Folklore" data-caption-hint="South American folklore, purely instrumental, Andean folk music, charango and quena flute melody, bombo drum and cajón percussion, warm acoustic guitar arpeggios, pentatonic scale, earthy and spiritual atmosphere, indigenous rhythm, no vocals" data-force-inst="true">
+                    <img class="genre-img" src="/static/image/%E3%83%95%E3%82%A9%E3%83%AB%E3%82%AF%E3%83%AD%E3%83%BC%E3%83%AC.png" alt="フォルクローレ"><span class="genre-label">フォルクローレ</span>
+                </button>
+                <!-- ダンス・トレンド系 -->
+                <button class="genre-tile" data-genre="Reggaeton" data-caption-hint="Reggaeton, Latin urban dance, dembow rhythm, heavy 808 bass, snappy snare, reggaeton beat pattern, Spanish vocal style, party atmosphere, catchy hook, tropical club energy">
+                    <img class="genre-img" src="/static/image/Reggaeton.png" alt="Reggaeton"><span class="genre-label">レゲトン</span>
+                </button>
+                <button class="genre-tile" data-genre="K-POP" data-caption-hint="K-POP, Korean pop, polished production, catchy hook, tight choreography beat, synth layers, powerful vocal, rap verse, dynamic arrangement, bright and energetic, modern dance pop">
+                    <img class="genre-img" src="/static/image/K-POP.png" alt="K-POP"><span class="genre-label">K-POP</span>
+                </button>
+                <button class="genre-tile" data-genre="Phonk" data-caption-hint="Phonk, Memphis rap influenced, dark cowbell pattern, distorted 808 bass, aggressive hi-hats, chopped vocal samples, drift car culture, hard-hitting drums, lo-fi gritty texture, high energy">
+                    <img class="genre-img" src="/static/image/Phonk.png" alt="Phonk"><span class="genre-label">Phonk</span>
+                </button>
+                <button class="genre-tile" data-genre="EDM" data-caption-hint="EDM, electronic dance music, massive synth drop, four-on-the-floor kick, sidechain compression, build-up and breakdown, festival anthem, euphoric lead synth, heavy sub bass, high energy crowd atmosphere">
+                    <img class="genre-img" src="/static/image/EDM.png" alt="EDM"><span class="genre-label">EDM</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 生成コントロール -->
+        <section class="simple-section control-bar">
+            <div class="control-row">
+                <div class="control-item">
+                    <label>長さ</label>
+                    <select class="simple-select" id="simple-duration">
+                        <option value="30">30秒</option>
+                        <option value="45">45秒</option>
+                        <option value="60">60秒</option>
+                        <option value="90">90秒</option>
+                        <option value="120" selected>120秒</option>
+                        <option value="180">180秒</option>
+                        <option value="240">240秒</option>
+                        <option value="300">300秒</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label>言語</label>
+                    <select class="simple-select" id="simple-language">
+                        <option value="ja" selected>日本語</option>
+                        <option value="en">English</option>
+                        <option value="zh">中文</option>
+                        <option value="ko">한국어</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                        <option value="it">Italiano</option>
+                        <option value="pt">Português</option>
+                        <option value="ru">Русский</option>
+                        <option value="th">ไทย</option>
+                        <option value="vi">Tiếng Việt</option>
+                        <option value="id">Bahasa Indonesia</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label class="inst-check">
+                        <input type="checkbox" id="simple-inst">
+                        <span>楽器のみ</span>
+                    </label>
+                </div>
+                <div class="control-item">
+                    <label class="inst-check">
+                        <input type="checkbox" id="simple-builtin-caption" checked>
+                        <span>キャプション自動</span>
+                    </label>
+                </div>
+                <div class="control-item">
+                    <button class="debug-info-btn" id="debug-info-btn" onclick="toggleDebugPanel()">詳細情報</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 生成 + 再生エリア -->
+        <section class="simple-section generate-area">
+            <!-- ステータス -->
+            <div class="simple-status" id="simple-status"></div>
+            <!-- プログレスバー -->
+            <div class="simple-progress" id="simple-progress">
+                <div class="simple-progress-fill" id="simple-progress-fill"></div>
+                <span class="simple-progress-text" id="simple-progress-text"></span>
+            </div>
+            <!-- 生成ボタン + プレーヤー -->
+            <div class="generate-row">
+                <button class="generate-btn" id="simple-generate-btn" onclick="generateSimple()">
+                    🎵 音楽を生成
+                </button>
+                <div class="inline-player" id="inline-player">
+                    <div class="track-buttons" id="track-buttons"></div>
+                    <a class="dl-btn" id="simple-dl-btn" href="#" download title="ダウンロード">⬇️</a>
+                    <input type="range" class="seek-bar" id="seek-bar" min="0" max="100" value="0">
+                    <span class="time-display" id="time-display">0:00 / 0:00</span>
+                </div>
+            </div>
+            <audio id="simple-audio" crossorigin="anonymous"></audio>
+        </section>
+    </div>
+
+    <!-- 円形オーバーレイビジュアライザー -->
+    <div class="circle-overlay" id="circle-overlay">
+        <canvas id="circle-canvas"></canvas>
+        <div class="overlay-lyrics" id="overlay-lyrics"></div>
+        <div class="overlay-controls" id="overlay-controls">
+            <div class="overlay-tracks" id="overlay-tracks"></div>
+            <a class="overlay-dl-btn" id="overlay-dl-btn" href="#" download>⬇️</a>
+            <input type="range" class="overlay-seek" id="overlay-seek" min="0" max="100" value="0">
+            <span class="overlay-time" id="overlay-time">0:00 / 0:00</span>
+        </div>
+        <div class="overlay-hint">タップで閉じる</div>
+    </div>
+
+    <!-- タグ・キャプション表示エリア -->
+    <div class="debug-panel collapsed" id="debug-panel">
+        <div class="debug-body" id="debug-body">
+            <div class="debug-row">
+                <span class="debug-label">ジャンル</span>
+                <span class="debug-value" id="debug-genre">—</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">テーマ</span>
+                <span class="debug-value" id="debug-theme">—</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">モード</span>
+                <span class="debug-value" id="debug-mode">—</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">タグ (raw)</span>
+                <span class="debug-value debug-caption" id="debug-tags">—</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">キャプション</span>
+                <span class="debug-value debug-caption" id="debug-caption">—</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">言語</span>
+                <span class="debug-value" id="debug-lang">—</span>
+            </div>
+            <div class="debug-row">
+                <span class="debug-label">パラメータ</span>
+                <span class="debug-value debug-caption" id="debug-params">—</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js?v=20260225b"></script>
+
+    <footer class="simple-footer">
+        <p>Powered by <a href="https://github.com/ace-step/ACE-Step" target="_blank" rel="noopener">ACE-Step 1.5</a> &amp; ゆずき</p>
+    </footer>
+</body>
+</html>
