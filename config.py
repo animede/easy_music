@@ -46,6 +46,9 @@ def parse_args():
     parser.add_argument("--llm-url", type=str, default=None, help="LLM API URL (例: http://YOUR_LLM_HOST:11434/v1 / Ollama)")
     parser.add_argument("--llm-model", type=str, default=None, help="LLMモデル名")
     
+    # LLMモード
+    parser.add_argument("--local-llm", action="store_true", help="外部LLMを使わず内蔵LLM(Qwen3-1.7B)のみ使用")
+    
     # その他
     parser.add_argument("--no-reload", action="store_true", help="自動リロードを無効化")
     
@@ -75,6 +78,9 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8889
     debug: bool = True
+    
+    # LLMモード
+    use_local_llm_only: bool = False
     
     # ポーリング設定
     poll_interval: float = 1.0  # 秒
@@ -125,6 +131,10 @@ class Settings(BaseSettings):
         
         if args.llm_model:
             self.openai_chat_model = args.llm_model
+        
+        # LLMモード
+        if args.local_llm:
+            self.use_local_llm_only = True
         
         # デバッグモード
         if args.no_reload:

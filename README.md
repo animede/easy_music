@@ -8,6 +8,7 @@
 - 🎵 **30ジャンル対応** — J-POP、Rock、Jazz、EDMなど豊富なジャンルタイル
 - 🤖 **AI作詞** — テーマに合わせた歌詞を自動生成
 - 📝 **ローカルLLMフォールバック** — 外部LLM接続不可時はQwen3-1.7Bで自動切替
+- 🔒 **内蔵LLM専用モード** — `--local-llm` オプションで外部LLM不要で動作
 - 🎛️ **キャプション自動** — ジャンル別の最適キャプション生成
 - 🎼 **AI強化** — BPM・キー自動設定
 - 🔊 **インラインプレイヤー** — スペクトルビジュアライザー付き
@@ -18,7 +19,28 @@
 
 - Python 3.10+
 - ACE-Step 1.5 APIサーバー（別途起動）
-- LLM APIサーバー（オプション、OpenAI互換）
+- LLM APIサーバー（オプション、OpenAI互換 / `--local-llm` 使用時は不要）
+
+### ACE-Step APIサーバーの起動
+
+Easy Music は ACE-Step 1.5 の API サーバーが起動している必要があります。
+
+```bash
+# 1. uv をインストール
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. クローン & インストール
+git clone https://github.com/ACE-Step/ACE-Step-1.5.git
+cd ACE-Step-1.5
+uv sync
+
+# 3. APIサーバーを起動（デフォルト: ポート8001、モデルは初回自動ダウンロード）
+uv run acestep-api
+```
+
+> 起動スクリプトも利用できます: Linux `./start_api_server.sh` / Windows `start_api_server.bat` / macOS `./start_api_server_macos.sh`
+>
+> 詳細は [ACE-Step 1.5 リポジトリ](https://github.com/ace-step/ACE-Step-1.5) を参照してください。
 
 ### インストール
 
@@ -42,6 +64,9 @@ pip install -r requirements.txt
 
 # LLM APIを指定
 ./start.sh --llm-url http://YOUR_LLM_HOST:11434/v1
+
+# 内蔵LLMのみ使用（外部LLM不要）
+./start.sh --local-llm
 
 # ポート変更
 ./start.sh --port 9000

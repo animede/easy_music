@@ -70,8 +70,11 @@ async def log_base_urls_on_startup():
     ace_step_client.base_url = settings.ace_step_api_url.rstrip("/")
 
     logger.info("ACE-Step API Base URL: %s", settings.ace_step_api_url)
-    logger.info("LLM API Base URL: %s", settings.openai_base_url)
-    logger.info("LLM Model: %s", settings.openai_chat_model)
+    if settings.use_local_llm_only:
+        logger.info("LLM Mode: 内蔵LLM (Qwen3-1.7B) のみ")
+    else:
+        logger.info("LLM API Base URL: %s", settings.openai_base_url)
+        logger.info("LLM Model: %s", settings.openai_chat_model)
 
 
 # =============================================================================
@@ -127,8 +130,11 @@ if __name__ == "__main__":
 
     print(f"🎵 Easy Music starting on http://{settings.host}:{settings.port}")
     print(f"   ACE-Step API: {settings.ace_step_api_url}")
-    print(f"   LLM API: {settings.openai_base_url}")
-    print(f"   LLM Model: {settings.openai_chat_model}")
+    if settings.use_local_llm_only:
+        print(f"   LLM: 内蔵LLM (Qwen3-1.7B) のみ")
+    else:
+        print(f"   LLM API: {settings.openai_base_url}")
+        print(f"   LLM Model: {settings.openai_chat_model}")
     print()
 
     uvicorn.run(

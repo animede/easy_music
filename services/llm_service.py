@@ -205,28 +205,33 @@ class LLMService:
         
         外部LLM失敗時はローカルLLM(Qwen3-1.7B GGUF)にフォールバック
         """
-        # まず外部LLMを試行
-        try:
-            self._ensure_client()
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ]
-            completion = await self._client.chat.completions.create(
-                model=self._effective_model(),
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=temperature
-            )
-            return completion.choices[0].message.content
-        except Exception as ext_error:
-            logger.warning(f"外部LLM接続失敗: {ext_error}")
+        # --local-llm モード: 外部LLMをスキップ
+        if not settings.use_local_llm_only:
+            # まず外部LLMを試行
+            try:
+                self._ensure_client()
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ]
+                completion = await self._client.chat.completions.create(
+                    model=self._effective_model(),
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+                return completion.choices[0].message.content
+            except Exception as ext_error:
+                logger.warning(f"外部LLM接続失敗: {ext_error}")
+        else:
+            logger.info("内蔵LLMモード: 外部LLMをスキップ")
 
-        # フォールバック: ローカルLLM
+        # ローカルLLM
         try:
             from services.local_llm_service import local_llm_service
             if local_llm_service.is_available:
-                logger.info("ローカルLLMにフォールバックします")
+                if not settings.use_local_llm_only:
+                    logger.info("ローカルLLMにフォールバックします")
                 return await local_llm_service.chat(
                     user_message=user_message,
                     system_prompt=system_prompt,
@@ -236,8 +241,8 @@ class LLMService:
         except Exception as local_error:
             logger.error(f"ローカルLLMも失敗: {local_error}")
 
-        # 両方失敗
-        raise ConnectionError("外部LLM・ローカルLLMともに利用できません")
+        # 失敗
+        raise ConnectionError("LLMが利用できません。外部LLM接続または内蔵LLMの初期化を確認してください")
     
     async def generate_lyrics(
         self,

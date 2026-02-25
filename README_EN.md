@@ -8,6 +8,7 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 - 🎵 **30 Genres** — J-POP, Rock, Jazz, EDM, and more genre tiles
 - 🤖 **AI Lyrics** — Auto-generates lyrics to match your theme
 - 📝 **Local LLM Fallback** — Automatically switches to Qwen3-1.7B when external LLM is unavailable
+- 🔒 **Built-in LLM Only Mode** — Use `--local-llm` flag to run without any external LLM
 - 🎛️ **Auto Caption** — Genre-optimized caption generation
 - 🎼 **AI Enhancement** — Automatic BPM and key setting
 - 🔊 **Inline Player** — With spectrum visualizer
@@ -19,7 +20,28 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 
 - Python 3.10+
 - ACE-Step 1.5 API server (started separately)
-- LLM API server (optional, OpenAI-compatible)
+- LLM API server (optional, OpenAI-compatible / not needed with `--local-llm`)
+
+### Starting the ACE-Step API Server
+
+Easy Music requires a running ACE-Step 1.5 API server.
+
+```bash
+# 1. Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Clone & install
+git clone https://github.com/ACE-Step/ACE-Step-1.5.git
+cd ACE-Step-1.5
+uv sync
+
+# 3. Launch API server (default: port 8001, models auto-download on first run)
+uv run acestep-api
+```
+
+> Launch scripts are also available: Linux `./start_api_server.sh` / Windows `start_api_server.bat` / macOS `./start_api_server_macos.sh`
+>
+> See the [ACE-Step 1.5 repository](https://github.com/ace-step/ACE-Step-1.5) for details.
 
 ### Installation
 
@@ -43,6 +65,9 @@ pip install -r requirements.txt
 
 # Specify LLM API
 ./start.sh --llm-url http://YOUR_LLM_HOST:11434/v1
+
+# Use built-in LLM only (no external LLM needed)
+./start.sh --local-llm
 
 # Change port
 ./start.sh --port 9000
