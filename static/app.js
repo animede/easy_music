@@ -80,6 +80,23 @@ const I18N = {
         mode_no_genre: '(未選択)',
         mode_no_theme: '(なし)',
         mode_no_tags: '(タグなし — 外部LLMがキャプション全文を生成)',
+        // JUKEBOX
+        jukebox_btn_off: '🎶 自動演奏',
+        jukebox_btn_on: '🎶 JUKEBOX ON',
+        jukebox_label_multi: 'ジャンル（複数選択可）',
+        jukebox_start: '▶ スタート',
+        jukebox_stop: '⏹ ストップ',
+        jukebox_stopping: '⏹ 停止中...',
+        jukebox_stop_after: '🛑 現在の曲の再生後に停止します...',
+        jukebox_preparing: '準備中...',
+        jukebox_no_genre: 'ジャンルを1つ以上選択してください',
+        jukebox_error: '❌ JUKEBOX エラー: ',
+        jukebox_retry_exhausted: '❌ 生成に3回失敗しました。JUKEBOXを停止します。',
+        jukebox_retrying: '⚠️ 生成失敗、リトライ中...',
+        jukebox_generating: '🎵 JUKEBOX: 生成中',
+        jukebox_playing: '🎶 JUKEBOX再生中',
+        jukebox_select_hint: 'ジャンルを選んでください（複数可）',
+        jukebox_selected_label: '🎶 JUKEBOX — 選択中のジャンル',
         // Footer (not dynamic, stays in HTML)
     },
     en: {
@@ -108,6 +125,23 @@ const I18N = {
         genre_bossanova: 'Bossa Nova', genre_citypop: 'City Pop',
         genre_chanson: 'Chanson', genre_folklore: 'Folklore',
         genre_reggaeton: 'Reggaeton',
+        // JUKEBOX
+        jukebox_btn_off: '🎶 Auto Play',
+        jukebox_btn_on: '🎶 JUKEBOX ON',
+        jukebox_label_multi: 'Genre (multi-select)',
+        jukebox_start: '▶ Start',
+        jukebox_stop: '⏹ Stop',
+        jukebox_stopping: '⏹ Stopping...',
+        jukebox_stop_after: '🛑 Stopping after current track...',
+        jukebox_preparing: 'Preparing...',
+        jukebox_no_genre: 'Please select at least one genre',
+        jukebox_error: '❌ JUKEBOX Error: ',
+        jukebox_retry_exhausted: '❌ Failed 3 times. Stopping JUKEBOX.',
+        jukebox_retrying: '⚠️ Generation failed, retrying...',
+        jukebox_generating: '🎵 JUKEBOX: Generating',
+        jukebox_playing: '🎶 JUKEBOX playing',
+        jukebox_select_hint: 'Select genres (multi-select)',
+        jukebox_selected_label: '🎶 JUKEBOX — Selected Genres',
         debug_genre: 'Genre', debug_theme: 'Theme', debug_mode: 'Mode',
         debug_tags: 'Tags (raw)', debug_caption: 'Caption',
         debug_lang: 'Language', debug_params: 'Parameters',
@@ -244,6 +278,19 @@ let analyser = null;
 let dataArray = null;
 let circleAnimId = null;
 let isVisualizerReady = false;
+let currentOverlayGenre = null;  // 現在オーバーレイに表示中のジャンル名
+let vizMode = 'spectrum';        // 'spectrum' | 'wave' | 'ring' | 'particles' | 'pulse'
+let vizParticles = [];           // particles mode state
+let vizTimeData = null;          // waveform data buffer
+
+// JUKEBOX state
+let jukeboxMode = false;
+let jukeboxRunning = false;
+let jukeboxCategories = [];    // [{name, hint, forceInst}, ...]
+let jukeboxTrackCount = 0;
+let jukeboxNextReady = null;   // {audioUrl, genre, lyrics} or null
+let jukeboxStopRequested = false;
+let jukeboxGenerating = false;
 
 // =============================================================================
 // API Helper (self-contained)
@@ -297,13 +344,8 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     if (data) options.body = JSON.stringify(data);
     const res = await fetch(endpoint, options);
     if (!res.ok) {
-        let errText = await res.text();
-        // JSON detail を取り出す（FastAPI HTTPException 形式）
-        try {
-            const parsed = JSON.parse(errText);
-            if (parsed.detail) errText = parsed.detail;
-        } catch (_) {}
-        throw new Error(errText);
+        const errText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errText}`);
     }
     return res.json();
 }
@@ -396,6 +438,11 @@ function hideSimpleProgress() {
 function initGenreGrid() {
     document.querySelectorAll('.genre-tile').forEach(tile => {
         tile.addEventListener('click', () => {
+            // JUKEBOX mode: multi-select
+            if (jukeboxMode) {
+                handleJukeboxGenreClick(tile);
+                return;
+            }
             const wasSelected = tile.classList.contains('selected');
             // deselect all
             document.querySelectorAll('.genre-tile').forEach(t => t.classList.remove('selected'));
@@ -784,6 +831,10 @@ function playSimpleTrack(index) {
     document.getElementById('simple-dl-btn').href = url;
     document.getElementById('overlay-dl-btn').href = url;
 
+    // ジャンル情報をオーバーレイに反映
+    currentOverlayGenre = selectedGenre ? selectedGenre.name : null;
+    updateOverlayBackground(currentOverlayGenre);
+
     // Highlight buttons
     document.querySelectorAll('.track-btn').forEach((b, i) => b.classList.toggle('active', i === index));
     document.querySelectorAll('.overlay-track-btn').forEach((b, i) => b.classList.toggle('active', i === index));
@@ -831,6 +882,11 @@ function initAudioSync() {
         const dur = formatTime(audio.duration);
         timeDisp.textContent = `${cur} / ${dur}`;
         overlayTime.textContent = `${cur} / ${dur}`;
+        // JUKEBOX seek bar sync
+        const jbSeek = document.getElementById('jukebox-seek-bar');
+        const jbTime = document.getElementById('jukebox-time-display');
+        if (jbSeek) jbSeek.value = pct;
+        if (jbTime) jbTime.textContent = `${cur} / ${dur}`;
     });
 
     // Seek from bars
@@ -842,20 +898,26 @@ function initAudioSync() {
     };
     seekHandler(seekBar);
     seekHandler(overlaySeek);
+    // JUKEBOX seek bar
+    const jbSeek = document.getElementById('jukebox-seek-bar');
+    if (jbSeek) seekHandler(jbSeek);
 
     // Auto-advance to next track
     audio.addEventListener('ended', () => {
+        if (jukeboxRunning) {
+            onJukeboxTrackEnded();
+            return;
+        }
         if (currentTrackIndex < currentResults.length - 1) {
-            playSimpleTrack(currentTrackIndex + 1);
+            setTimeout(() => playSimpleTrack(currentTrackIndex + 1), 1000);
         } else {
-            // Last track ended — close overlay
             hideOverlay();
         }
     });
 
     // Show overlay on play
     audio.addEventListener('play', () => {
-        if (currentResults.length > 0) showOverlay();
+        if (currentResults.length > 0) showOverlay(currentOverlayGenre);
     });
     audio.addEventListener('pause', () => {
         // Don't hide overlay on pause — user might resume
@@ -866,9 +928,11 @@ function initAudioSync() {
 // Circle Overlay Visualizer
 // =============================================================================
 
-function showOverlay() {
+function showOverlay(genreName) {
     const overlay = document.getElementById('circle-overlay');
     overlay.classList.add('visible');
+    // 背景画像をジャンルのサムネイルに設定
+    updateOverlayBackground(genreName);
     resizeCanvas();
     startCircleAnimation();
 }
@@ -877,6 +941,44 @@ function hideOverlay() {
     const overlay = document.getElementById('circle-overlay');
     overlay.classList.remove('visible');
     if (circleAnimId) { cancelAnimationFrame(circleAnimId); circleAnimId = null; }
+}
+
+/**
+ * オーバーレイ背景をジャンルのサムネイル画像に更新
+ */
+function updateOverlayBackground(genreName) {
+    const bgEl = document.getElementById('overlay-bg-image');
+    const nameEl = document.getElementById('overlay-genre-name');
+    if (!bgEl) return;
+
+    if (genreName) {
+        const imgUrl = getGenreImageUrl(genreName);
+        if (imgUrl) {
+            bgEl.style.backgroundImage = `url('${imgUrl}')`;
+            bgEl.style.opacity = '0.3';
+        } else {
+            bgEl.style.backgroundImage = 'none';
+            bgEl.style.opacity = '0';
+        }
+        if (nameEl) nameEl.textContent = genreName;
+    } else {
+        bgEl.style.backgroundImage = 'none';
+        bgEl.style.opacity = '0';
+        if (nameEl) nameEl.textContent = '';
+    }
+}
+
+/**
+ * ジャンル名からサムネイル画像URLを取得
+ */
+function getGenreImageUrl(genreName) {
+    if (!genreName) return null;
+    const tile = document.querySelector(`.genre-tile[data-genre="${genreName}"]`);
+    if (tile) {
+        const img = tile.querySelector('.genre-img');
+        if (img) return img.src;
+    }
+    return null;
 }
 
 function resizeCanvas() {
@@ -893,11 +995,12 @@ function initSimpleVisualizer() {
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
-            analyser.fftSize = 512;
+            analyser.fftSize = 1024;
             const source = audioContext.createMediaElementSource(audio);
             source.connect(analyser);
             analyser.connect(audioContext.destination);
             dataArray = new Uint8Array(analyser.frequencyBinCount);
+            vizTimeData = new Uint8Array(analyser.frequencyBinCount);
         }
         if (audioContext.state === 'suspended') audioContext.resume();
     }, { once: false });
@@ -920,52 +1023,221 @@ function startCircleAnimation() {
 
         if (!analyser || !dataArray) return;
         analyser.getByteFrequencyData(dataArray);
+        if (vizTimeData) analyser.getByteTimeDomainData(vizTimeData);
 
-        const cx = W / 2;
-        const cy = H / 2;
-        const maxRadius = Math.min(W, H) * 0.38;
-
-        // ---- Center Spectrum Bars ----
-        const barCount = 48;
-        const barMaxH = maxRadius * 0.7;
-        const barW = 5;
-        const barGap = 3;
-        const spectrumWidth = barCount * (barW + barGap);
-        const specX = cx - spectrumWidth / 2;
-        const specY = cy;
-
-        // Use first 75% of frequency data for spectrum (skip ultra-high)
-        const specBins = Math.floor(dataArray.length * 0.75);
-
-        for (let i = 0; i < barCount; i++) {
-            const dataIdx = Math.floor(i * specBins / barCount);
-            const val = dataArray[dataIdx] / 255;
-            const barH = val * barMaxH;
-
-            const x = specX + i * (barW + barGap);
-            const hue = 260 + (i / barCount) * 80; // purple → pink range
-            const saturation = 75 + val * 25;
-            const lightness = 55 + val * 20;
-
-            // Glow effect
-            ctx.shadowBlur = 12 + val * 15;
-            ctx.shadowColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-
-            const barGrad = ctx.createLinearGradient(x, specY - barH / 2, x, specY + barH / 2);
-            barGrad.addColorStop(0, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
-            barGrad.addColorStop(1, `hsl(${hue}, ${saturation}%, ${lightness - 20}%)`);
-            ctx.fillStyle = barGrad;
-
-            // Draw bar centered vertically with rounded tops
-            ctx.beginPath();
-            ctx.roundRect(x, specY - barH / 2, barW, barH, 2);
-            ctx.fill();
+        switch (vizMode) {
+            case 'wave':      drawWave(ctx, W, H); break;
+            case 'ring':      drawRing(ctx, W, H); break;
+            case 'particles': drawParticles(ctx, W, H); break;
+            case 'pulse':     drawPulse(ctx, W, H); break;
+            default:          drawSpectrum(ctx, W, H); break;
         }
-
-        ctx.shadowBlur = 0;
     }
 
     draw();
+}
+
+// --- Spectrum (スペクトル) ---
+function drawSpectrum(ctx, W, H) {
+    const cx = W / 2;
+    const cy = H / 2;
+    const maxRadius = Math.min(W, H) * 0.38;
+    const barCount = 48;
+    const barMaxH = maxRadius * 0.7;
+    const barW = 5;
+    const barGap = 3;
+    const spectrumWidth = barCount * (barW + barGap);
+    const specX = cx - spectrumWidth / 2;
+    const specY = cy;
+    const specBins = Math.floor(dataArray.length * 0.75);
+
+    for (let i = 0; i < barCount; i++) {
+        const dataIdx = Math.floor(i * specBins / barCount);
+        const val = dataArray[dataIdx] / 255;
+        const barH = val * barMaxH;
+        const x = specX + i * (barW + barGap);
+        const hue = 260 + (i / barCount) * 80;
+        const saturation = 75 + val * 25;
+        const lightness = 55 + val * 20;
+
+        ctx.shadowBlur = 12 + val * 15;
+        ctx.shadowColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        const barGrad = ctx.createLinearGradient(x, specY - barH / 2, x, specY + barH / 2);
+        barGrad.addColorStop(0, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
+        barGrad.addColorStop(1, `hsl(${hue}, ${saturation}%, ${lightness - 20}%)`);
+        ctx.fillStyle = barGrad;
+        ctx.beginPath();
+        ctx.roundRect(x, specY - barH / 2, barW, barH, 2);
+        ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+}
+
+// --- Wave (ウェーブ) ---
+function drawWave(ctx, W, H) {
+    if (!vizTimeData) return;
+    const cy = H / 2;
+    const amplitude = H * 0.28;
+    const sliceWidth = W / vizTimeData.length;
+
+    for (let mirror = 0; mirror < 2; mirror++) {
+        ctx.beginPath();
+        const sign = mirror === 0 ? 1 : -1;
+        const hueOffset = mirror * 40;
+        for (let i = 0; i < vizTimeData.length; i++) {
+            const v = (vizTimeData[i] / 128.0) - 1.0;
+            const y = cy + sign * v * amplitude;
+            const x = i * sliceWidth;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        const hue = 260 + hueOffset;
+        ctx.strokeStyle = `hsla(${hue}, 80%, 65%, 0.7)`;
+        ctx.lineWidth = 2.5;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = `hsla(${hue}, 80%, 60%, 0.5)`;
+        ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+    ctx.lineTo(W, cy);
+    ctx.strokeStyle = 'rgba(124, 92, 252, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 0;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+}
+
+// --- Ring (リング) ---
+function drawRing(ctx, W, H) {
+    const cx = W / 2;
+    const cy = H / 2;
+    const baseRadius = Math.min(W, H) * 0.2;
+    const barCount = 64;
+    const specBins = Math.floor(dataArray.length * 0.75);
+
+    for (let i = 0; i < barCount; i++) {
+        const dataIdx = Math.floor(i * specBins / barCount);
+        const val = dataArray[dataIdx] / 255;
+        const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
+        const barLen = val * baseRadius * 0.9;
+
+        const x1 = cx + Math.cos(angle) * baseRadius;
+        const y1 = cy + Math.sin(angle) * baseRadius;
+        const x2 = cx + Math.cos(angle) * (baseRadius + barLen);
+        const y2 = cy + Math.sin(angle) * (baseRadius + barLen);
+
+        const hue = (i / barCount) * 120 + 240;
+        const lightness = 55 + val * 20;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = `hsla(${hue}, 80%, ${lightness}%, 0.8)`;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.shadowBlur = 8 + val * 12;
+        ctx.shadowColor = `hsla(${hue}, 80%, ${lightness}%, 0.6)`;
+        ctx.stroke();
+    }
+
+    const avgVal = Array.from(dataArray.slice(0, 32)).reduce((a, b) => a + b, 0) / 32 / 255;
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseRadius * (0.95 + avgVal * 0.05), 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(167, 139, 250, ${0.2 + avgVal * 0.3})`;
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = `rgba(124, 92, 252, ${0.3 + avgVal * 0.3})`;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+}
+
+// --- Particles (パーティクル) ---
+function drawParticles(ctx, W, H) {
+    const cx = W / 2;
+    const cy = H / 2;
+    const avgVal = Array.from(dataArray.slice(0, 48)).reduce((a, b) => a + b, 0) / 48 / 255;
+    const bassVal = Array.from(dataArray.slice(0, 8)).reduce((a, b) => a + b, 0) / 8 / 255;
+
+    const spawnCount = Math.floor(avgVal * 4);
+    for (let i = 0; i < spawnCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 3 + bassVal * 3;
+        vizParticles.push({
+            x: cx, y: cy,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1.0,
+            decay: 0.008 + Math.random() * 0.015,
+            size: 2 + Math.random() * 3 + avgVal * 3,
+            hue: 240 + Math.random() * 100
+        });
+    }
+
+    for (let i = vizParticles.length - 1; i >= 0; i--) {
+        const p = vizParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        p.vx *= 0.995;
+        p.vy *= 0.995;
+
+        if (p.life <= 0 || p.x < -10 || p.x > W + 10 || p.y < -10 || p.y > H + 10) {
+            vizParticles.splice(i, 1);
+            continue;
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${p.life * 0.7})`;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = `hsla(${p.hue}, 80%, 60%, ${p.life * 0.4})`;
+        ctx.fill();
+    }
+
+    if (vizParticles.length > 300) vizParticles.splice(0, vizParticles.length - 300);
+    ctx.shadowBlur = 0;
+}
+
+// --- Pulse (パルス) ---
+function drawPulse(ctx, W, H) {
+    const cx = W / 2;
+    const cy = H / 2;
+    const maxR = Math.min(W, H) * 0.35;
+
+    const bands = [0, 0, 0, 0];
+    const bandSize = Math.floor(dataArray.length / 4);
+    for (let b = 0; b < 4; b++) {
+        let sum = 0;
+        for (let i = 0; i < bandSize; i++) sum += dataArray[b * bandSize + i];
+        bands[b] = sum / bandSize / 255;
+    }
+
+    const hues = [280, 300, 320, 340];
+    const radii = [0.9, 0.7, 0.5, 0.3];
+
+    for (let b = 0; b < 4; b++) {
+        const r = maxR * radii[b] * (0.6 + bands[b] * 0.5);
+        const alpha = 0.15 + bands[b] * 0.25;
+
+        const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
+        grad.addColorStop(0, `hsla(${hues[b]}, 80%, 60%, ${alpha})`);
+        grad.addColorStop(1, `hsla(${hues[b]}, 80%, 40%, 0)`);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `hsla(${hues[b]}, 80%, 65%, ${alpha + 0.1})`;
+        ctx.lineWidth = 1.5 + bands[b] * 2;
+        ctx.shadowBlur = 15 + bands[b] * 20;
+        ctx.shadowColor = `hsla(${hues[b]}, 80%, 60%, 0.4)`;
+        ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
 }
 
 // =============================================================================
@@ -990,6 +1262,20 @@ function initOverlay() {
     // Download button
     document.getElementById('overlay-dl-btn').addEventListener('click', (e) => {
         e.stopPropagation();
+    });
+
+    // Visualizer mode selector
+    document.querySelectorAll('.viz-mode-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const mode = btn.dataset.mode;
+            if (mode && mode !== vizMode) {
+                vizMode = mode;
+                document.querySelectorAll('.viz-mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (mode !== 'particles') vizParticles = [];
+            }
+        });
     });
 
     // Resize canvas on window resize
@@ -1036,4 +1322,424 @@ async function loadModelInfo() {
     } catch (_) {
         // Not critical — will use default
     }
+}
+
+// =============================================================================
+// JUKEBOX Mode
+// =============================================================================
+
+/**
+ * JUKEBOXモード ON/OFF 切り替え
+ */
+function toggleJukeboxMode() {
+    if (jukeboxRunning) return;
+
+    jukeboxMode = !jukeboxMode;
+    const container = document.querySelector('.simple-container');
+    const btn = document.getElementById('jukebox-toggle-btn');
+    const genreLabel = document.getElementById('genre-section-label');
+
+    if (jukeboxMode) {
+        container.classList.add('jukebox-active');
+        btn.classList.add('active');
+        btn.textContent = t('jukebox_btn_on');
+        if (genreLabel) genreLabel.textContent = t('jukebox_label_multi');
+        document.querySelectorAll('.genre-tile').forEach(t => t.classList.remove('selected'));
+        selectedGenre = null;
+    } else {
+        container.classList.remove('jukebox-active');
+        btn.classList.remove('active');
+        btn.textContent = t('jukebox_btn_off');
+        if (genreLabel) genreLabel.textContent = t('label_genre');
+        jukeboxCategories = [];
+        document.querySelectorAll('.genre-tile').forEach(t => t.classList.remove('jukebox-selected'));
+        renderJukeboxBadges();
+    }
+}
+
+/**
+ * JUKEBOX: ジャンルタイルクリック（複数選択トグル）
+ */
+function handleJukeboxGenreClick(tile) {
+    if (jukeboxRunning) return;
+
+    const genre = {
+        name: tile.dataset.genre,
+        hint: tile.dataset.captionHint,
+        forceInst: tile.dataset.forceInst === 'true'
+    };
+
+    const idx = jukeboxCategories.findIndex(c => c.name === genre.name);
+    if (idx >= 0) {
+        jukeboxCategories.splice(idx, 1);
+        tile.classList.remove('jukebox-selected');
+    } else {
+        jukeboxCategories.push(genre);
+        tile.classList.add('jukebox-selected');
+    }
+
+    renderJukeboxBadges();
+}
+
+/**
+ * JUKEBOX: 選択カテゴリのバッジ表示を更新
+ */
+function renderJukeboxBadges() {
+    const container = document.getElementById('jukebox-selected-categories');
+    if (!container) return;
+    container.innerHTML = '';
+    jukeboxCategories.forEach((cat, i) => {
+        const badge = document.createElement('span');
+        badge.className = 'jukebox-category-badge';
+        badge.innerHTML = `${cat.name} <span class="badge-remove" onclick="removeJukeboxCategory(${i})">✕</span>`;
+        container.appendChild(badge);
+    });
+}
+
+/**
+ * JUKEBOX: カテゴリバッジの✕クリックで削除
+ */
+function removeJukeboxCategory(index) {
+    if (jukeboxRunning) return;
+    const removed = jukeboxCategories.splice(index, 1)[0];
+    if (removed) {
+        document.querySelectorAll('.genre-tile').forEach(t => {
+            if (t.dataset.genre === removed.name) t.classList.remove('jukebox-selected');
+        });
+    }
+    renderJukeboxBadges();
+}
+
+/**
+ * JUKEBOX: スタート/ストップ トグル
+ */
+function toggleJukebox() {
+    if (jukeboxRunning) {
+        stopJukebox();
+    } else {
+        startJukebox();
+    }
+}
+
+/**
+ * JUKEBOX: 開始
+ */
+async function startJukebox() {
+    if (jukeboxCategories.length === 0) {
+        showSimpleStatus(t('jukebox_no_genre'), 'error');
+        return;
+    }
+
+    jukeboxRunning = true;
+    jukeboxStopRequested = false;
+    jukeboxTrackCount = 0;
+    jukeboxNextReady = null;
+    jukeboxGenerating = false;
+
+    const btn = document.getElementById('jukebox-start-btn');
+    btn.textContent = t('jukebox_stop');
+    btn.classList.add('stop');
+
+    const npEl = document.getElementById('jukebox-now-playing');
+    npEl.classList.add('visible');
+    updateJukeboxNowPlaying(t('jukebox_preparing'), 0);
+
+    const jbPlayer = document.getElementById('jukebox-inline-player');
+    if (jbPlayer) jbPlayer.classList.add('visible');
+
+    document.querySelectorAll('.genre-tile').forEach(t => t.style.pointerEvents = 'none');
+
+    try {
+        await jukeboxLoop();
+    } catch (e) {
+        console.error('[JUKEBOX] loop error:', e);
+        showSimpleStatus(t('jukebox_error') + (e.message || ''), 'error');
+    }
+
+    // クリーンアップ
+    jukeboxRunning = false;
+    jukeboxGenerating = false;
+    btn.disabled = false;
+    btn.textContent = t('jukebox_start');
+    btn.classList.remove('stop');
+    npEl.classList.remove('visible');
+    document.querySelectorAll('.genre-tile').forEach(t => t.style.pointerEvents = '');
+    hideSimpleProgress();
+}
+
+/**
+ * JUKEBOX: 停止リクエスト
+ */
+function stopJukebox() {
+    jukeboxStopRequested = true;
+    showSimpleStatus(t('jukebox_stop_after'), 'info');
+    const btn = document.getElementById('jukebox-start-btn');
+    btn.disabled = true;
+    btn.textContent = t('jukebox_stopping');
+}
+
+/**
+ * JUKEBOX: メインループ
+ */
+async function jukeboxLoop() {
+    const firstResult = await jukeboxGenerateOne();
+    if (!firstResult || jukeboxStopRequested) return;
+
+    jukeboxTrackCount++;
+    jukeboxPlayTrack(firstResult);
+
+    while (!jukeboxStopRequested) {
+        const prefetchPromise = jukeboxGenerateOne();
+        await waitForAudioEnd();
+        if (jukeboxStopRequested) break;
+
+        const nextResult = await prefetchPromise;
+        if (!nextResult || jukeboxStopRequested) break;
+
+        await sleep(1000);
+        if (jukeboxStopRequested) break;
+
+        jukeboxTrackCount++;
+        jukeboxPlayTrack(nextResult);
+    }
+}
+
+/**
+ * JUKEBOX: ランダムカテゴリで1曲生成
+ */
+async function jukeboxGenerateOne() {
+    if (jukeboxStopRequested) return null;
+
+    jukeboxGenerating = true;
+
+    const genre = jukeboxCategories[Math.floor(Math.random() * jukeboxCategories.length)];
+    const isInst = genre.forceInst || document.getElementById('simple-inst').checked;
+
+    updateJukeboxNowPlaying(`${genre.name} ${t('phase_prep')}`, jukeboxTrackCount);
+    showSimpleProgress(0, t('phase_prep'));
+    showSimpleStatus(`${t('jukebox_generating')} — ${genre.name}...`, 'info');
+
+    let retries = 0;
+    const maxRetries = 3;
+
+    while (retries < maxRetries) {
+        try {
+            // Step 0: テーマ自動生成
+            let theme = genre.name;
+            try {
+                const themeResult = await apiRequest('/api/theme', 'POST', {
+                    genre: genre.name,
+                    language: getSelectedLanguageName()
+                });
+                if (themeResult.success && themeResult.theme) {
+                    theme = themeResult.theme;
+                }
+            } catch (_) {}
+
+            if (jukeboxStopRequested) return null;
+
+            // Step 1: 歌詞
+            let effectiveLyrics = '';
+            if (isInst) {
+                effectiveLyrics = '[inst]';
+            } else {
+                showSimpleProgress(5, t('status_lyrics_gen'));
+                try {
+                    const lyricsResult = await apiRequest('/api/lyrics', 'POST', {
+                        theme: theme,
+                        genre: genre.name,
+                        language: getSelectedLanguageName()
+                    });
+                    if (lyricsResult.success && lyricsResult.lyrics) {
+                        effectiveLyrics = lyricsResult.lyrics;
+                    }
+                } catch (_) {}
+            }
+
+            if (jukeboxStopRequested) return null;
+
+            // Step 2: キャプション
+            let caption = genre.hint || genre.name;
+            if (theme && theme !== genre.name) {
+                caption += ' | theme: ' + theme;
+            }
+            const selectedLangCode = getSelectedLanguage();
+            if (selectedLangCode !== 'ja' && !isInst) {
+                caption += '. Sung in ' + getSelectedLanguageName() + '.';
+            }
+            if (isInst && !caption.toLowerCase().includes('instrumental')) {
+                caption = 'instrumental, no vocals, ' + caption;
+            }
+            caption = sanitizeCaption(caption);
+
+            // Step 2.7: AI強化
+            let formatInputResult = null;
+            showSimpleProgress(8, t('status_enhance'));
+            try {
+                formatInputResult = await apiRequest('/api/format_input', 'POST', {
+                    prompt: caption,
+                    lyrics: isInst ? '' : effectiveLyrics,
+                    temperature: 0.85,
+                });
+                if (formatInputResult.success && formatInputResult.caption) {
+                    caption = sanitizeCaption(formatInputResult.caption);
+                    if (!isInst && formatInputResult.lyrics && formatInputResult.lyrics.includes('[')) {
+                        effectiveLyrics = formatInputResult.lyrics;
+                    }
+                }
+            } catch (_) {}
+
+            if (jukeboxStopRequested) return null;
+
+            // Step 3: 音楽生成
+            showSimpleProgress(10, t('status_generating'));
+            const params = {
+                prompt: caption || genre.name,
+                lyrics: effectiveLyrics,
+                thinking: true,
+                vocal_language: isInst ? '' : getSelectedLanguage(),
+                audio_duration: getSelectedDuration(),
+                batch_size: 1,
+                audio_format: 'mp3',
+                inference_steps: window._simpleSteps || 50,
+                guidance_scale: isInst ? 18.0 : 15.0,
+                use_cot_caption: true,
+                use_cot_language: true,
+            };
+            if (formatInputResult && formatInputResult.success) {
+                if (formatInputResult.bpm) params.bpm = formatInputResult.bpm;
+                if (formatInputResult.key_scale) params.key_scale = formatInputResult.key_scale;
+                if (formatInputResult.time_signature) params.time_signature = formatInputResult.time_signature;
+            }
+
+            const createResult = await apiRequest('/api/generate', 'POST', params);
+            const taskId = createResult.task_id;
+            if (!taskId) throw new Error(t('status_task_fail'));
+
+            const expectedTime = estimateGenerationTime(params);
+            let polls = 0;
+            const maxPolls = 300;
+
+            while (polls < maxPolls) {
+                if (jukeboxStopRequested) return null;
+                await sleep(1000);
+                polls++;
+
+                let statusResult;
+                try {
+                    statusResult = await apiRequest(`/api/status/${taskId}`);
+                } catch (_) { continue; }
+
+                if (statusResult.status === 1) {
+                    showSimpleProgress(100, '✅');
+                    if (statusResult.results && statusResult.results.length > 0) {
+                        const url = convertAudioUrl(statusResult.results[0].url);
+                        jukeboxGenerating = false;
+                        return { audioUrl: url, genre: genre.name, lyrics: effectiveLyrics };
+                    }
+                    throw new Error('Empty result');
+                } else if (statusResult.status === 2) {
+                    throw new Error(statusResult.error || t('status_fail'));
+                }
+
+                const progress = smoothProgress(polls, expectedTime);
+                showSimpleProgress(progress, getProgressPhaseText(polls, expectedTime));
+            }
+            throw new Error(t('status_timeout'));
+
+        } catch (e) {
+            retries++;
+            console.warn(`[JUKEBOX] generation failed (attempt ${retries}/${maxRetries}):`, e.message);
+            if (retries >= maxRetries) {
+                jukeboxGenerating = false;
+                showSimpleStatus(t('jukebox_retry_exhausted'), 'error');
+                jukeboxStopRequested = true;
+                return null;
+            }
+            showSimpleStatus(`${t('jukebox_retrying')} (${retries}/${maxRetries})`, 'info');
+            await sleep(2000);
+        }
+    }
+
+    jukeboxGenerating = false;
+    return null;
+}
+
+/**
+ * JUKEBOX: 曲を再生
+ */
+function jukeboxPlayTrack(result) {
+    const audio = document.getElementById('simple-audio');
+    audio.src = result.audioUrl;
+
+    currentResults = [{ url: result.audioUrl }];
+    currentTrackIndex = 0;
+    currentLyrics = result.lyrics;
+
+    currentOverlayGenre = result.genre;
+    updateOverlayBackground(result.genre);
+
+    const lyricsEl = document.getElementById('overlay-lyrics');
+    if (lyricsEl) {
+        if (result.lyrics && result.lyrics !== '[inst]') {
+            lyricsEl.textContent = result.lyrics
+                .replace(/\[(verse|chorus|bridge|outro|intro|hook|pre-chorus|interlude|rap|spoken)\d*\]/gi, '')
+                .replace(/^\s*\n/gm, '\n')
+                .trim();
+        } else {
+            lyricsEl.textContent = '';
+        }
+    }
+
+    updateJukeboxNowPlaying(`♪ ${result.genre}`, jukeboxTrackCount);
+    hideSimpleProgress();
+    showSimpleStatus(`${t('jukebox_playing')} — ${result.genre} #${jukeboxTrackCount}`, 'success');
+
+    initSimpleVisualizer();
+
+    setTimeout(() => {
+        audio.play().catch(() => {});
+    }, 100);
+}
+
+/**
+ * JUKEBOX: Now Playing 表示更新
+ */
+function updateJukeboxNowPlaying(text, count) {
+    const textEl = document.getElementById('jukebox-now-playing-text');
+    const countEl = document.getElementById('jukebox-now-playing-count');
+    if (textEl) textEl.textContent = text;
+    if (countEl) countEl.textContent = count > 0 ? `#${count}` : '';
+}
+
+/**
+ * JUKEBOX: audioの再生終了を待つPromise
+ */
+function waitForAudioEnd() {
+    return new Promise(resolve => {
+        const audio = document.getElementById('simple-audio');
+
+        if (jukeboxStopRequested) { resolve(); return; }
+        if (audio.paused && audio.currentTime === 0 && !audio.src) {
+            resolve(); return;
+        }
+
+        const handler = () => {
+            audio.removeEventListener('ended', handler);
+            resolve();
+        };
+        audio.addEventListener('ended', handler);
+
+        setTimeout(() => {
+            audio.removeEventListener('ended', handler);
+            resolve();
+        }, 600000);
+    });
+}
+
+/**
+ * JUKEBOX: audio ended イベント
+ */
+function onJukeboxTrackEnded() {
+    console.log('[JUKEBOX] track ended, waiting for next...');
 }

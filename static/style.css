@@ -151,6 +151,38 @@ body::after {
     letter-spacing: 0.02em;
 }
 
+/* ---------- Collapsible Sections ---------- */
+.collapsible-section {
+    border-radius: var(--radius-md);
+}
+.collapsible-summary {
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+    padding: 4px 0;
+    transition: color 0.2s;
+}
+.collapsible-summary::-webkit-details-marker { display: none; }
+.collapsible-summary::before {
+    content: '▶';
+    font-size: 0.7em;
+    transition: transform 0.2s;
+    color: var(--accent);
+}
+.collapsible-section[open] > .collapsible-summary::before {
+    transform: rotate(90deg);
+}
+.collapsible-section[open] > .collapsible-summary {
+    margin-bottom: 10px;
+}
+.collapsible-summary:hover {
+    color: var(--text-primary);
+}
+
 /* ---------- Input / Textarea ---------- */
 .simple-input,
 .simple-textarea {
@@ -628,14 +660,14 @@ body::after {
 .circle-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.92);
+    background: #000;
     z-index: 1000;
     display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    backdrop-filter: blur(20px);
+    overflow: hidden;
 }
 .circle-overlay.visible {
     display: flex;
@@ -651,7 +683,44 @@ body::after {
     inset: 0;
     width: 100%;
     height: 100%;
+    z-index: 1;
 }
+
+/* --- Overlay Background Image --- */
+.overlay-bg-image {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.35;
+    filter: blur(8px) saturate(1.2);
+    transform: scale(1.05);
+    transition: background-image 0.8s ease, opacity 0.8s ease;
+    z-index: 0;
+}
+.overlay-bg-image::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.6) 100%);
+}
+
+/* --- Overlay Genre Name --- */
+.overlay-genre-name {
+    position: absolute;
+    top: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.08em;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+}
+.overlay-genre-name:empty { display: none; }
 
 .overlay-controls {
     position: absolute;
@@ -702,6 +771,45 @@ body::after {
 }
 .overlay-dl-btn:hover { opacity: 1; }
 
+/* --- Visualizer Mode Selector --- */
+.viz-mode-selector {
+    display: flex;
+    gap: 3px;
+    padding: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.viz-mode-btn {
+    width: 30px;
+    height: 26px;
+    border: none;
+    border-radius: 13px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    padding: 0;
+}
+.viz-mode-btn:hover {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.08);
+}
+.viz-mode-btn.active {
+    color: white;
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.overlay-hint {
+    z-index: 1001;
+}
+
 .overlay-seek {
     width: 180px;
     height: 4px;
@@ -728,23 +836,25 @@ body::after {
 /* ---------- Overlay Lyrics ---------- */
 .overlay-lyrics {
     position: absolute;
-    bottom: 100px;
+    top: 65px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1001;
-    max-width: 80%;
-    max-height: 35vh;
+    max-width: 70%;
+    max-height: 30vh;
     overflow-y: auto;
     text-align: center;
-    color: rgba(255, 255, 255, 0.75);
-    font-size: 0.85rem;
-    line-height: 1.8;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.82rem;
+    line-height: 1.9;
     letter-spacing: 0.03em;
     pointer-events: none;
     white-space: pre-line;
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
     scrollbar-width: none;
     -ms-overflow-style: none;
+    mask-image: linear-gradient(to bottom, transparent, black 8%, black 85%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 8%, black 85%, transparent);
 }
 .overlay-lyrics::-webkit-scrollbar { display: none; }
 .overlay-lyrics:empty { display: none; }
@@ -875,4 +985,205 @@ body::after {
     .genre-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
     .simple-select { font-size: 0.78rem; min-width: 70px; padding: 4px 22px 4px 8px; }
 }
+
+/* =============================================================================
+   JUKEBOX Mode
+   ============================================================================= */
+
+/* ヘッダーボタン群 */
+.header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.jukebox-toggle-btn {
+    color: #e0d4ff;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 7px 16px;
+    border: 1px solid rgba(124, 92, 252, 0.4);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    backdrop-filter: blur(8px);
+    background: linear-gradient(135deg, rgba(124, 92, 252, 0.15), rgba(244, 114, 182, 0.1));
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.03em;
+    box-shadow: 0 0 8px rgba(124, 92, 252, 0.15);
+}
+.jukebox-toggle-btn:hover {
+    color: #fff;
+    border-color: rgba(124, 92, 252, 0.6);
+    background: linear-gradient(135deg, rgba(124, 92, 252, 0.25), rgba(244, 114, 182, 0.18));
+    box-shadow: 0 0 16px rgba(124, 92, 252, 0.25);
+}
+.jukebox-toggle-btn.active {
+    color: #fff;
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(124, 92, 252, 0.2));
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* JUKEBOXモード: 通常セクション非表示 */
+.jukebox-active .normal-mode-section {
+    display: none !important;
+}
+
+/* JUKEBOX専用セクション */
+.jukebox-section {
+    display: none;
+}
+.jukebox-active .jukebox-section {
+    display: block;
+}
+
+/* JUKEBOX選択済みカテゴリ表示 */
+.jukebox-selected-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+    min-height: 24px;
+}
+.jukebox-selected-categories:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+.jukebox-category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(124, 92, 252, 0.2), rgba(244, 114, 182, 0.15));
+    border: 1px solid rgba(124, 92, 252, 0.3);
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    animation: badgeIn 0.2s ease;
+}
+@keyframes badgeIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+.jukebox-category-badge .badge-remove {
+    cursor: pointer;
+    opacity: 0.5;
+    font-size: 0.75rem;
+    transition: opacity var(--transition-fast);
+}
+.jukebox-category-badge .badge-remove:hover {
+    opacity: 1;
+}
+
+/* JUKEBOXモード時のジャンルタイル複数選択 */
+.jukebox-active .genre-tile.jukebox-selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow), var(--shadow-md);
+}
+.jukebox-active .genre-tile.jukebox-selected::after {
+    content: '✓';
+    position: absolute;
+    top: 5px;
+    right: 7px;
+    font-size: 0.65rem;
+    color: white;
+    font-weight: 700;
+    z-index: 3;
+    background: var(--accent);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* JUKEBOX スタート/ストップボタン */
+.jukebox-start-btn {
+    flex: 0 0 auto;
+    padding: 15px 36px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    border: none;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-smooth);
+    font-family: inherit;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+}
+.jukebox-start-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.35), var(--shadow-md);
+}
+.jukebox-start-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.jukebox-start-btn.stop {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+.jukebox-start-btn.stop:hover:not(:disabled) {
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.35), var(--shadow-md);
+}
+
+/* JUKEBOX ステータスバー */
+.jukebox-now-playing {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    margin-bottom: 14px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(124, 92, 252, 0.1), rgba(244, 114, 182, 0.08));
+    border: 1px solid rgba(124, 92, 252, 0.2);
+    animation: jukeboxPulse 2s ease-in-out infinite;
+}
+.jukebox-now-playing.visible {
+    display: flex;
+}
+@keyframes jukeboxPulse {
+    0%, 100% { border-color: rgba(124, 92, 252, 0.2); }
+    50%      { border-color: rgba(244, 114, 182, 0.3); }
+}
+.jukebox-now-playing .now-playing-icon {
+    font-size: 1.3rem;
+    animation: musicBounce 0.6s ease-in-out infinite alternate;
+}
+@keyframes musicBounce {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-3px); }
+}
+.jukebox-now-playing .now-playing-text {
+    flex: 1;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.jukebox-now-playing .now-playing-count {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+/* JUKEBOX generate-area内 */
+.jukebox-generate-area {
+    display: none;
+}
+.jukebox-active .jukebox-generate-area {
+    display: flex;
+}
+.jukebox-active .normal-generate-area {
+    display: none;
 }

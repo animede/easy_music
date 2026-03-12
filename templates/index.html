@@ -6,7 +6,7 @@
     <title>Easy Music — AI音楽生成</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="/static/style.css?v=20260225c">
+    <link rel="stylesheet" href="/static/style.css?v=20260312b">
 </head>
 <body>
     <div class="simple-container">
@@ -15,28 +15,21 @@
             <div class="header-left">
                 <h1>🎵 Easy Music</h1>
             </div>
-            <button class="lang-toggle-btn" id="lang-toggle-btn" onclick="toggleUILang()" title="日本語 / English">🌐 EN</button>
+            <div class="header-buttons">
+                <button class="jukebox-toggle-btn" id="jukebox-toggle-btn" onclick="toggleJukeboxMode()" title="JUKEBOX">🎶 自動演奏</button>
+                <button class="lang-toggle-btn" id="lang-toggle-btn" onclick="toggleUILang()" title="日本語 / English">🌐 EN</button>
+            </div>
         </header>
 
-        <!-- テーマ入力 -->
-        <section class="simple-section">
-            <label class="section-label" for="simple-theme" data-i18n="label_theme">テーマ / シナリオ</label>
-            <input type="text" id="simple-theme" class="simple-input"
-                   data-i18n-placeholder="placeholder_theme"
-                   placeholder="例: 夜空を見上げて願いを込める魔法少女の物語">
-        </section>
-
-        <!-- 歌詞入力 -->
-        <section class="simple-section">
-            <label class="section-label" for="simple-lyrics" data-i18n="label_lyrics">歌詞（空欄ならAIが自動生成）</label>
-            <textarea id="simple-lyrics" class="simple-textarea"
-                      data-i18n-placeholder="placeholder_lyrics"
-                      placeholder="[verse]&#10;星の海に浮かぶ願いが&#10;夜空を駆け巡る&#10;&#10;[chorus]&#10;輝く未来へ..."></textarea>
+        <!-- JUKEBOX: 選択カテゴリ表示 -->
+        <section class="simple-section jukebox-section">
+            <label class="section-label" data-i18n="jukebox_selected_label">🎶 JUKEBOX — 選択中のジャンル</label>
+            <div class="jukebox-selected-categories" id="jukebox-selected-categories" data-placeholder=""></div>
         </section>
 
         <!-- ジャンル選択タイル -->
         <section class="simple-section">
-            <label class="section-label" data-i18n="label_genre">ジャンル</label>
+            <label class="section-label" id="genre-section-label" data-i18n="label_genre">ジャンル</label>
             <div class="genre-grid" id="genre-grid">
                 <!-- 洋楽メジャー -->
                 <button class="genre-tile" data-genre="J-POP" data-caption-hint="J-POP, Japanese pop, catchy melody, bright, emotional vocal, polished production">
@@ -189,6 +182,31 @@
             </div>
         </section>
 
+        <!-- テーマ入力（折りたたみ） -->
+        <details class="simple-section normal-mode-section collapsible-section">
+            <summary class="section-label collapsible-summary" data-i18n="label_theme">テーマ / シナリオ</summary>
+            <input type="text" id="simple-theme" class="simple-input"
+                   data-i18n-placeholder="placeholder_theme"
+                   placeholder="例: 夜空を見上げて願いを込める魔法少女の物語">
+        </details>
+
+        <!-- 歌詞入力（折りたたみ） -->
+        <details class="simple-section normal-mode-section collapsible-section">
+            <summary class="section-label collapsible-summary" data-i18n="label_lyrics">歌詞（空欄ならAIが自動生成）</summary>
+            <textarea id="simple-lyrics" class="simple-textarea"
+                      data-i18n-placeholder="placeholder_lyrics"
+                      placeholder="[verse]&#10;星の海に浮かぶ願いが&#10;夜空を駆け巡る&#10;&#10;[chorus]&#10;輝く未来へ..."></textarea>
+        </details>
+
+        <!-- JUKEBOX: Now Playing ステータス -->
+        <section class="simple-section jukebox-section">
+            <div class="jukebox-now-playing" id="jukebox-now-playing">
+                <span class="now-playing-icon">🎶</span>
+                <span class="now-playing-text" id="jukebox-now-playing-text">再生待機中...</span>
+                <span class="now-playing-count" id="jukebox-now-playing-count"></span>
+            </div>
+        </section>
+
         <!-- 生成 + 再生エリア -->
         <section class="simple-section generate-area">
             <!-- ステータス -->
@@ -198,8 +216,8 @@
                 <div class="simple-progress-fill" id="simple-progress-fill"></div>
                 <span class="simple-progress-text" id="simple-progress-text"></span>
             </div>
-            <!-- 生成ボタン + プレーヤー -->
-            <div class="generate-row">
+            <!-- 通常モード: 生成ボタン + プレーヤー -->
+            <div class="generate-row normal-generate-area">
                 <button class="generate-btn" id="simple-generate-btn" onclick="generateSimple()">
                     <span data-i18n="btn_generate">🎵 音楽を生成</span>
                 </button>
@@ -210,16 +228,35 @@
                     <span class="time-display" id="time-display">0:00 / 0:00</span>
                 </div>
             </div>
+            <!-- JUKEBOX モード: スタート/ストップ + プレーヤー -->
+            <div class="generate-row jukebox-generate-area">
+                <button class="jukebox-start-btn" id="jukebox-start-btn" onclick="toggleJukebox()">
+                    ▶ スタート
+                </button>
+                <div class="inline-player" id="jukebox-inline-player">
+                    <input type="range" class="seek-bar" id="jukebox-seek-bar" min="0" max="100" value="0">
+                    <span class="time-display" id="jukebox-time-display">0:00 / 0:00</span>
+                </div>
+            </div>
             <audio id="simple-audio" crossorigin="anonymous"></audio>
         </section>
     </div>
 
     <!-- 円形オーバーレイビジュアライザー -->
     <div class="circle-overlay" id="circle-overlay">
+        <div class="overlay-bg-image" id="overlay-bg-image"></div>
         <canvas id="circle-canvas"></canvas>
+        <div class="overlay-genre-name" id="overlay-genre-name"></div>
         <div class="overlay-lyrics" id="overlay-lyrics"></div>
         <div class="overlay-controls" id="overlay-controls">
             <div class="overlay-tracks" id="overlay-tracks"></div>
+            <div class="viz-mode-selector" id="viz-mode-selector">
+                <button class="viz-mode-btn active" data-mode="spectrum" title="スペクトル">▮▮</button>
+                <button class="viz-mode-btn" data-mode="wave" title="ウェーブ">〜</button>
+                <button class="viz-mode-btn" data-mode="ring" title="リング">○</button>
+                <button class="viz-mode-btn" data-mode="particles" title="パーティクル">✧</button>
+                <button class="viz-mode-btn" data-mode="pulse" title="パルス">◉</button>
+            </div>
             <a class="overlay-dl-btn" id="overlay-dl-btn" href="#" download>⬇️</a>
             <input type="range" class="overlay-seek" id="overlay-seek" min="0" max="100" value="0">
             <span class="overlay-time" id="overlay-time">0:00 / 0:00</span>
@@ -261,7 +298,7 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=20260225c"></script>
+    <script src="/static/app.js?v=20260312a"></script>
 
     <footer class="simple-footer">
         <p>Powered by <a href="https://github.com/ace-step/ACE-Step" target="_blank" rel="noopener">ACE-Step 1.5</a> &amp; ゆずき</p>

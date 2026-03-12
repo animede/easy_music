@@ -8,10 +8,11 @@ Pick a genre, click generate — anyone can create music with AI!
 
 1. [What This App Does](#what-this-app-does)
 2. [How to Use](#how-to-use)
-3. [Settings Explained](#settings-explained)
-4. [Genre List & Characteristics](#genre-list--characteristics)
-5. [Tips for Better Music](#tips-for-better-music)
-6. [FAQ](#faq)
+3. [JUKEBOX Auto-Play Mode](#jukebox-auto-play-mode)
+4. [Settings Explained](#settings-explained)
+5. [Genre List & Characteristics](#genre-list--characteristics)
+6. [Tips for Better Music](#tips-for-better-music)
+7. [FAQ](#faq)
 
 ---
 
@@ -25,6 +26,7 @@ Easy Music uses the **ACE-Step 1.5** AI music generation engine to automatically
 - 🎼 **AI Enhancement** — Automatic BPM, key, and time signature estimation
 - 🔊 **Inline Player** — With spectrum visualizer
 - 🌏 **13 Languages** — Japanese, English, Chinese, Korean, and more
+- 🎶 **JUKEBOX Auto-Play** — Select genres and enjoy endless AI-generated music, one track after another
 
 ---
 
@@ -64,6 +66,45 @@ Click the "🎵 Generate Music" button and let the AI do the rest!
 ### Step 5: Play
 
 Once complete, a player appears. Enjoy your music with the spectrum visualizer!
+
+---
+
+## 🎶 JUKEBOX Auto-Play Mode
+
+JUKEBOX is an auto-play feature where AI continuously generates and plays new songs based on your selected genres. Like a radio station, just press one button for unlimited new music.
+
+### How to Use
+
+1. Click the **🎶 Auto-Play** button in the header to switch to JUKEBOX mode
+2. Select one or more genre tiles (multi-select enabled)
+3. Press the **▶ JUKEBOX Start** button
+4. AI randomly picks from your selected genres and generates a new track
+5. When one track ends, the next is automatically generated and played
+6. Press **■ STOP** to stop
+
+### JUKEBOX Features
+
+- 🎲 **Random Selection**: Randomly picks one genre from your selections each time
+- 🤖 **Fully Automatic**: Theme, lyrics, BPM, key — all decided by AI
+- 🎬 **Visualizer**: Full-screen overlay with audio-reactive animations
+- 🌟 **5 Animation Modes**: Choose from Spectrum / Wave / Ring / Particles / Pulse
+- 🎨 **Genre Background**: Displays a background image matching the playing genre
+- 📝 **Lyrics Display**: Shows generated lyrics on the overlay
+- 🔢 **Play Count**: Real-time display of how many tracks have been played
+
+### Visualizer Animation Modes
+
+Switch via the selector at the bottom-left of the overlay:
+
+| Mode | Description |
+|------|-------------|
+| **Spectrum** | Frequency spectrum bars (default) |
+| **Wave** | Waveform animation |
+| **Ring** | Circular visualizer |
+| **Particles** | Audio-reactive particles |
+| **Pulse** | Pulsating rings synced to volume |
+
+> 💡 **Tip**: JUKEBOX is perfect for background music — work sessions, parties, relaxation time!
 
 ---
 
