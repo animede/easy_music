@@ -97,6 +97,7 @@ const I18N = {
         jukebox_playing: '🎶 JUKEBOX再生中',
         jukebox_select_hint: 'ジャンルを選んでください（複数可）',
         jukebox_selected_label: '🎶 JUKEBOX — 選択中のジャンル',
+        jukebox_return_overlay: '🎵 再生画面に戻る',
         // Footer (not dynamic, stays in HTML)
     },
     en: {
@@ -142,6 +143,7 @@ const I18N = {
         jukebox_playing: '🎶 JUKEBOX playing',
         jukebox_select_hint: 'Select genres (multi-select)',
         jukebox_selected_label: '🎶 JUKEBOX — Selected Genres',
+        jukebox_return_overlay: '🎵 Return to Player',
         debug_genre: 'Genre', debug_theme: 'Theme', debug_mode: 'Mode',
         debug_tags: 'Tags (raw)', debug_caption: 'Caption',
         debug_lang: 'Language', debug_params: 'Parameters',
@@ -280,6 +282,7 @@ let circleAnimId = null;
 let isVisualizerReady = false;
 let currentOverlayGenre = null;  // 現在オーバーレイに表示中のジャンル名
 let vizMode = 'spectrum';        // 'spectrum' | 'wave' | 'ring' | 'particles' | 'pulse'
+let vizModeUserSelected = false; // ユーザーが手動選択したらtrue、JUKEBOX開始時にリセット
 let vizParticles = [];           // particles mode state
 let vizTimeData = null;          // waveform data buffer
 
@@ -1249,9 +1252,14 @@ function initOverlay() {
     overlay.addEventListener('click', (e) => {
         // Don't close if clicking on controls
         if (e.target.closest('.overlay-controls')) return;
-        hideOverlay();
-        // Pause audio
-        document.getElementById('simple-audio').pause();
+        if (jukeboxRunning) {
+            // JUKEBOX中: オーバーレイだけ閉じる（音楽は続行）
+            hideOverlay();
+            showReturnToOverlayBtn(true);
+        } else {
+            hideOverlay();
+            document.getElementById('simple-audio').pause();
+        }
     });
 
     // Prevent control clicks from closing overlay
@@ -1271,6 +1279,7 @@ function initOverlay() {
             const mode = btn.dataset.mode;
             if (mode && mode !== vizMode) {
                 vizMode = mode;
+                vizModeUserSelected = true;
                 document.querySelectorAll('.viz-mode-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 if (mode !== 'particles') vizParticles = [];
@@ -1435,6 +1444,7 @@ async function startJukebox() {
     jukeboxTrackCount = 0;
     jukeboxNextReady = null;
     jukeboxGenerating = false;
+    vizModeUserSelected = false;  // JUKEBOX開始時にランダムにリセット
 
     const btn = document.getElementById('jukebox-start-btn');
     btn.textContent = t('jukebox_stop');
@@ -1463,6 +1473,7 @@ async function startJukebox() {
     btn.textContent = t('jukebox_start');
     btn.classList.remove('stop');
     npEl.classList.remove('visible');
+    showReturnToOverlayBtn(false);
     document.querySelectorAll('.genre-tile').forEach(t => t.style.pointerEvents = '');
     hideSimpleProgress();
 }
@@ -1476,6 +1487,14 @@ function stopJukebox() {
     const btn = document.getElementById('jukebox-start-btn');
     btn.disabled = true;
     btn.textContent = t('jukebox_stopping');
+    // オーバーレイ復帰ボタンを隠す
+    showReturnToOverlayBtn(false);
+    // audioを強制停止してwaitForAudioEndを解決させる
+    const audio = document.getElementById('simple-audio');
+    audio.pause();
+    audio.currentTime = 0;
+    audio.dispatchEvent(new Event('ended'));
+    hideOverlay();
 }
 
 /**
@@ -1676,6 +1695,16 @@ function jukeboxPlayTrack(result) {
     currentTrackIndex = 0;
     currentLyrics = result.lyrics;
 
+    // JUKEBOX: ユーザー未選択ならランダムにアニメーションモードを切替
+    if (!vizModeUserSelected) {
+        const modes = ['spectrum', 'wave', 'ring', 'particles', 'pulse'];
+        vizMode = modes[Math.floor(Math.random() * modes.length)];
+        vizParticles = [];
+        document.querySelectorAll('.viz-mode-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.mode === vizMode);
+        });
+    }
+
     currentOverlayGenre = result.genre;
     updateOverlayBackground(result.genre);
 
@@ -1742,4 +1771,26 @@ function waitForAudioEnd() {
  */
 function onJukeboxTrackEnded() {
     console.log('[JUKEBOX] track ended, waiting for next...');
+}
+
+/**
+ * オーバーレイ復帰ボタンの表示/非表示
+ */
+function showReturnToOverlayBtn(show) {
+    let btn = document.getElementById('return-to-overlay-btn');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'return-to-overlay-btn';
+        btn.className = 'return-to-overlay-btn';
+        btn.textContent = t('jukebox_return_overlay');
+        btn.addEventListener('click', () => {
+            showReturnToOverlayBtn(false);
+            if (currentOverlayGenre || jukeboxRunning) {
+                showOverlay(currentOverlayGenre);
+            }
+        });
+        document.body.appendChild(btn);
+    }
+    btn.textContent = t('jukebox_return_overlay');
+    btn.style.display = show ? 'block' : 'none';
 }

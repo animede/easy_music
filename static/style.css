@@ -694,8 +694,8 @@ body::after {
     background-position: center;
     background-repeat: no-repeat;
     opacity: 0.35;
-    filter: blur(8px) saturate(1.2);
-    transform: scale(1.05);
+    filter: blur(4px) saturate(1.2);
+    transform: scale(1.03);
     transition: background-image 0.8s ease, opacity 0.8s ease;
     z-index: 0;
 }
@@ -1164,6 +1164,34 @@ body::after {
 @keyframes musicBounce {
     from { transform: translateY(0); }
     to   { transform: translateY(-3px); }
+}
+
+/* オーバーレイ復帰ボタン */
+.return-to-overlay-btn {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9000;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), #f472b6);
+    border: none;
+    border-radius: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(124, 92, 252, 0.4);
+    animation: returnBtnPulse 2s ease-in-out infinite;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.return-to-overlay-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 28px rgba(124, 92, 252, 0.6);
+}
+@keyframes returnBtnPulse {
+    0%, 100% { box-shadow: 0 4px 20px rgba(124, 92, 252, 0.4); }
+    50%      { box-shadow: 0 4px 28px rgba(244, 114, 182, 0.5); }
 }
 .jukebox-now-playing .now-playing-text {
     flex: 1;

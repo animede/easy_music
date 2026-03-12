@@ -98,11 +98,25 @@ Switch via the selector at the bottom-left of the overlay:
 
 | Mode | Description |
 |------|-------------|
-| **Spectrum** | Frequency spectrum bars (default) |
+| **Spectrum** | Frequency spectrum bars |
 | **Wave** | Waveform animation |
 | **Ring** | Circular visualizer |
 | **Particles** | Audio-reactive particles |
 | **Pulse** | Pulsating rings synced to volume |
+
+**Random mode in JUKEBOX:**
+- Without pressing a button → Animation changes randomly each track (from all 5 modes)
+- After selecting a mode via button → Stays fixed on that mode even when tracks change
+- On next JUKEBOX start → Resets to random again
+
+### Playback Screen Controls
+
+- **Click the overlay**: Returns to the control panel (during JUKEBOX, music keeps playing)
+- **🎵 Return to Player** button: A floating button appears at the bottom-right to return to the visualizer
+
+### STOP Button Behavior
+
+Pressing **■ STOP** immediately stops the current track and ends JUKEBOX. The overlay closes automatically and returns to the normal control screen.
 
 > 💡 **Tip**: JUKEBOX is perfect for background music — work sessions, parties, relaxation time!
 
