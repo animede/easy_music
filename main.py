@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 import uvicorn
 import logging
 
@@ -34,15 +34,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 静的ファイル（キャッシュ無効化ミドルウェア）
-class NoCacheStaticMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        if request.url.path.startswith("/static/"):
-            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            response.headers["Pragma"] = "no-cache"
-            response.headers["Expires"] = "0"
-        return response
+# 静的ファイル（キャッシュ無効化ミドルウェア — Pure ASGI）
+class NoCacheStaticMiddleware:
+    """静的ファイルに no-cache ヘッダーを付与する Pure ASGI ミドルウェア"""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        if not path.startswith("/static/"):
+            await self.app(scope, receive, send)
+            return
+
+        async def add_nocache_headers(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                headers.extend([
+                    (b"cache-control", b"no-cache, no-store, must-revalidate"),
+                    (b"pragma", b"no-cache"),
+                    (b"expires", b"0"),
+                ])
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, add_nocache_headers)
 
 app.add_middleware(NoCacheStaticMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")

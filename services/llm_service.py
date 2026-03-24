@@ -49,103 +49,105 @@ STYLE GUIDELINES:
 - If English: Write ONLY in English
 - Keep vocabulary natural for singing
 - IMPORTANT: Adding romanization doubles the lyrics and causes ACE-Step to sing garbled output
+
+SECTION ROLE GUIDELINES:
+- [verse]: Build the narrative. Describe a scene, tell a story; vary the melody to sustain interest.
+- [chorus]: Emotional peak. The main hook — repeated 2-3 times, maximum energy, most memorable lines.
+- [bridge]: Contrast and pivot. New perspective or emotional shift (2-4 lines) before the final chorus.
+- [outro]: Resolution. Echo of the chorus theme or a quiet fade. Short (1-2 lines or [inst]).
+
+MOOD-SPECIFIC VOCABULARY (if a mood is specified, incorporate these words and imagery naturally):
+- Bright/Happy:     輝く、笑顔、光、夢、希望、踊る、楽しい、嬉しい
+- Sad/Melancholic:  涙、消えていく、遠くなる、忘れられない、揺れる影、切ない
+- Intense/Powerful: 叫ぶ、燃える、嵐、砕く、限界、炎、立ち向かう
+- Gentle/Calm:      そっと、静かに、やわらかく、ささやく、流れる、なだらかに
+- Mysterious:       闇、星屑、幻、迷宮、霧の中、見えない、影、謎
 """
 
 # システムプロンプト: タグ生成
-TAGS_GENERATE_SYSTEM_PROMPT = """You are a music metadata expert. Based on the given lyrics and theme, generate appropriate music tags for AI music generation.
+TAGS_GENERATE_SYSTEM_PROMPT = """You are a music metadata expert. Based on the given lyrics and theme, generate minimal music tags for AI music generation.
+
+NOTE: The downstream AI (ACE-Step format_input) will handle detailed arrangement and instrumentation automatically.
+Your job is to provide only the high-level direction — genre, mood, and vocal type.
 
 OUTPUT FORMAT (JSON only):
 {
-    "genre": "primary genre, secondary genre",
-    "tags": "instrument1, instrument2, mood1, mood2, vocal type, tempo description",
+    "genre": "primary genre",
+    "tags": "mood1, mood2, vocal type",
     "bpm": 120,
     "key_scale": "C major"
 }
 
-TAG CATEGORIES:
-- Genre: pop, rock, jazz, electronic, hip-hop, R&B, classical, folk, country, etc.
-- Mood: upbeat, melancholic, energetic, calm, romantic, dark, hopeful, nostalgic
-- Instruments: piano, guitar, drums, bass, strings, synth, brass, etc.
-- Vocal: male voice, female voice, choir, falsetto, breathy, powerful
-- Tempo: slow tempo, mid tempo, fast tempo, upbeat rhythm
-
 GUIDELINES:
-- Analyze the lyrics mood and theme
-- Suggest appropriate instrumentation
-- Match tempo to the emotional content
-- Use 5-10 tags total
-- BPM range: 60-180
+- genre: ONE primary genre (e.g. "J-Pop", "Rock", "Jazz") — no subgenres
+- tags: 2-3 items ONLY: one or two mood words + one vocal type
+  - Mood examples: upbeat, melancholic, energetic, calm, romantic, dark, hopeful, nostalgic
+  - Vocal examples: female vocal, male vocal, choir, breathy female, powerful male
+  - DO NOT list instruments — leave that to ACE-Step
+- bpm: estimated BPM (60-180)
+- key_scale: estimated key (e.g. "C major", "A minor")
 """
 
 
 # システムプロンプト: ナラティブキャプション生成
-CAPTION_GENERATE_SYSTEM_PROMPT = """You are an expert music producer and audio engineer who writes detailed music descriptions for the ACE-Step AI music generator.
+CAPTION_GENERATE_SYSTEM_PROMPT = """You are a music producer writing brief style hints for the ACE-Step AI music generator.
 
-Your task: Given a theme, lyrics, and/or genre tags, write a precise, production-level caption that tells ACE-Step exactly what kind of music to generate. The caption directly controls the AI — every word matters.
+ACE-Step's thinking mode will expand your hint into a full production internally.
+Your job is to write a SHORT TRIGGER PHRASE — just enough to set the direction.
+
+STRICT OUTPUT RULES:
+1. Output ONLY the caption — no titles, no "Note:", no markdown, no commentary
+2. Write in English only
+3. Write exactly 1 sentence (30-60 words)
+4. Write a natural English sentence — NOT a comma-separated tag list
+5. DO NOT specify instruments, mixing, or arrangement — ACE-Step handles those
+
+WHAT TO INCLUDE (all three, briefly):
+1. GENRE + ERA — e.g. "2000s J-Pop", "classic rock"
+2. MOOD — one or two words: "nostalgic", "energetic and anthemic"
+3. VOCAL — e.g. "clear female vocal", "powerful male vocal", "no vocals"
+
+GOOD EXAMPLES:
+"A dramatic anime opening with an intense, emotionally charged atmosphere and a powerful male vocal."
+"A nostalgic 1980s city-pop track with a warm, breezy mood and a smooth female vocal."
+"A relaxed lo-fi hip-hop instrumental with a late-night dreamy mood."
+
+BAD EXAMPLE (never do this):
+"Anime song, dramatic, energetic, emotional, opening theme, Japanese anime soundtrack."
+
+GENRE-SPECIFIC ERA HINTS:
+- Japanese 70s Kayokyoku → "1970s Japanese kayokyoku"
+- 80s Japanese Folk → "1980s Japanese folk singer-songwriter"
+- 90s J-POP → "1990s J-Pop"
+- Vocaloid → "Vocaloid electronic style"
+- Anime Song → "anime opening/ending song"
+- Enka → "traditional Japanese enka"
+- New Music → "1970s-80s Japanese new music"
+- City Pop → "1980s Japanese city pop"
+"""
+
+CAPTION_GENERATE_DETAILED_PROMPT = """You are a music producer writing detailed production descriptions for the ACE-Step AI music generator.
+
+ACE-Step will NOT use its internal thinking process this time, so YOUR caption must be the complete musical blueprint.
+Write a DETAILED, SPECIFIC production description that fully specifies the sound world.
 
 STRICT OUTPUT RULES:
 1. Output ONLY the caption — no titles, no "Note:", no markdown, no lists, no commentary
-2. Write in English only (ACE-Step's text encoder is trained primarily on English music metadata)
-3. Write 3-5 sentences as a single flowing paragraph
-4. Never start with "Sure" / "Here is" / "This is a". Start directly with the genre or style description
+2. Write in English only
+3. Write 3-5 COMPLETE PROSE SENTENCES (100-200 words)
+4. NEVER output a comma-separated keyword list — write natural English sentences with subject and verb
+5. Never start with "Sure" / "Here is" / "This is a". Start directly with the genre/style.
 
-REQUIRED ELEMENTS (include ALL of these, in this order):
+WHAT TO INCLUDE (all of the following, in prose sentences):
+1. GENRE + ERA — e.g. "2000s J-Pop", "classic rock", "lo-fi hip-hop"
+2. MOOD/ATMOSPHERE — detailed emotional description
+3. KEY INSTRUMENTS — 2-4 specific instruments and their playing style
+4. RHYTHM — tempo feel, drum pattern character
+5. VOCAL — gender, tone quality, delivery style
+6. PRODUCTION TEXTURE — one word: "warm", "crisp", "lo-fi", "polished"
 
-1. GENRE + SUBGENRE + ERA — Be specific. Not just "pop" but "2000s J-Pop with city-pop revival influences" or "lo-fi hip-hop with jazzy chord progressions"
-
-2. VOCAL CHARACTERISTICS — Specify:
-   - Gender & register: "female soprano", "male baritone", "androgynous tenor"
-   - Timbre: "breathy", "raspy", "clear", "nasal", "warm", "airy", "powerful"
-   - Technique: "with gentle vibrato", "using falsetto in the chorus", "whispered verses"
-   - For instrumental: "instrumental, no vocals"
-
-3. INSTRUMENTS — List 3-6 specific instruments with playing style/tone:
-   - Piano: "bright grand piano arpeggios" / "mellow Rhodes electric piano chords" / "honky-tonk upright piano"
-   - Guitar: "clean fingerpicked nylon guitar" / "overdriven electric guitar power chords" / "tremolo-picked acoustic guitar"
-   - Bass: "deep sub bass" / "funky slap bass" / "warm fretless bass" / "synth bass with sidechain"
-   - Drums: "crisp programmed drums with tight hi-hats and punchy kick" / "live jazz brushed drums" / "808 trap hi-hats and booming kick"
-   - Synth: "lush analog synth pads" / "saw-wave lead synth" / "retro FM synth bells" / "warm Moog bass"
-   - Strings: "sweeping orchestral strings" / "pizzicato violin" / "solo cello melody"
-   - Winds: "smooth tenor saxophone solo" / "breathy shakuhachi flute" / "muted trumpet"
-   - Traditional: "shamisen with sharp plucking" / "koto glissando" / "taiko drum accents" / "erhu melody"
-   - Effects: "ambient reverb tails", "vinyl crackle", "tape saturation", "bitcrushed textures"
-
-4. ARRANGEMENT & DYNAMICS — How the song evolves:
-   - "builds from a sparse intro into a full band arrangement"
-   - "starts with solo piano, layers in strings and drums by the chorus"
-   - "maintains a steady hypnotic groove throughout"
-   - "features a dramatic breakdown before the final chorus"
-
-5. MOOD & ATMOSPHERE — Emotional quality:
-   - "nostalgic and bittersweet" / "euphoric and triumphant" / "dark and brooding" / "warm and comforting"
-
-6. PRODUCTION STYLE (optional but valuable):
-   - "lo-fi with warm tape saturation and vinyl crackle"
-   - "polished modern pop production with heavy compression"
-   - "spacious mix with wide stereo reverb"
-   - "raw and live-sounding with minimal processing"
-
-GENRE-SPECIFIC GUIDANCE:
-- Japanese 70s Kayokyoku: orchestral strings, brass section, dramatic vocal delivery, analog warmth, reverb-heavy mix
-- 80s Japanese Folk: acoustic guitar-led, singer-songwriter, warm analog recording, poetic lyrics, gentle strings, mellow and introspective
-- 90s J-POP: bright electric guitar riffs, strong vocal hooks, electronic drums mixed with live drums, keyboard pads
-- Vocaloid/Electronic: fast tempo (160-200 BPM), synthetic lead, heavy sidechain, intricate programmed drums, digital textures
-- Anime Song: dramatic dynamics, powerful chorus, driving guitar riffs, orchestral hits, emotional vocal climaxes
-- Enka: melismatic vocal with heavy vibrato, shamisen or koto, pentatonic melody, slow tempo, melancholic strings
-- Min'yo: shakuhachi, taiko, pentatonic scale, call-and-response structure, earthy and organic
-- Children's Song: simple acoustic arrangement, gentle xylophone or glockenspiel, warm piano, soft and innocent
-- New Music: singer-songwriter style, acoustic guitar or piano-led, poetic and introspective, mellow arrangement
-- Trance: uplifting synth pads, euphoric build-ups and breakdowns, driving four-on-the-floor kick, arpeggiated leads, 138 BPM, ethereal atmosphere
-- Mood/Lounge: smooth jazz chords, mellow Rhodes piano, soft brushed drums, warm bass, romantic and sophisticated
-- Driving/Refreshing: bright clean guitar, light rhythmic drums, warm bass, upbeat moderate tempo, breezy and uplifting, coastal sunshine feel
-- Acoustic Pop: warm fingerpicking acoustic guitar, gentle vocal harmonies, light cajon or brushed snare, upright bass or soft bass, intimate and heartfelt, cafe-style
-- Country: acoustic guitar strumming, banjo, fiddle, pedal steel guitar, warm storytelling vocal, Nashville production, heartland feel
-- Bossa Nova: nylon-string acoustic guitar with syncopated patterns, soft brushed percussion, warm upright bass, gentle vocal, Brazilian jazz influence, relaxed cafe atmosphere
-- Lo-Fi: mellow Rhodes/piano, vinyl crackle texture, warm lo-fi bass, chill drum loop with swing, tape saturation, nostalgic and cozy, study/relaxing mood
-- City Pop: funky slap bass, bright analog synths, crisp drum machine, lush chorus guitar, polished vocal, 1980s Japanese urban pop, AOR influence, summer night vibes
-
-EXAMPLE OUTPUT:
-A nostalgic 1980s Japanese city-pop track featuring a smooth, breathy female vocal with subtle vibrato. The arrangement centers on a groovy slap bass line, shimmering DX7 FM electric piano, and chorus-drenched clean electric guitar playing funky rhythm chords. Crisp gated-reverb drums with tight hi-hats and a punchy snare drive the rhythm. Lush analog synth pads and a sweeping string section fill the background, building into an infectious chorus with layered vocal harmonies. The production has a warm, analog character with vintage reverb and a polished yet organic feel throughout.
+GOOD EXAMPLE:
+"A 2000s J-Pop track with a nostalgic and bittersweet atmosphere. Shimmering synth pads and clean piano chords establish a warm foundation, supported by a crisp electronic drum beat with subtle snare snaps and a smooth, melodic bassline. The lead vocal is a clear, youthful female voice with an earnest delivery typical of anime themes. The overall production is polished and emotionally uplifting."
 """
 
 
@@ -249,7 +251,8 @@ class LLMService:
         theme: str,
         genre: str = "",
         language: str = "Japanese",
-        mood: str = ""
+        mood: str = "",
+        vocal: str = ""
     ) -> Dict[str, Any]:
         """
         歌詞を生成
@@ -259,6 +262,7 @@ class LLMService:
             genre: ジャンル
             language: 言語
             mood: ムード
+            vocal: ボーカルタイプ
         
         Returns:
             {
@@ -272,6 +276,7 @@ Theme: {theme}
 Genre: {genre or 'any'}
 Language: {language}
 Mood: {mood or 'match the theme'}
+Vocal style: {vocal or 'match the genre'}
 
 Generate complete song lyrics with structure tags.
 IMPORTANT: Do NOT add romanization or pronunciation in parentheses. Output lyrics in {language} ONLY."""
@@ -422,19 +427,20 @@ IMPORTANT: Do NOT add romanization or pronunciation in parentheses. Output lyric
         lyrics: str = "",
         theme: str = "",
         tags: str = "",
-        language: str = "Japanese"
+        language: str = "Japanese",
+        thinking: bool = True,
+        mood: str = "",
+        vocal: str = ""
     ) -> Dict[str, Any]:
         """
         歌詞/テーマ/タグからナラティブキャプションを生成
-        
-        ACE-Step の format_input が生成するような、
-        楽曲の詳細な自然言語描写を外部LLMで生成する。
         
         Args:
             lyrics: 歌詞
             theme: テーマ
             tags: 既存のタグ（ジャンル等）
             language: 歌唱言語
+            thinking: True=簡潔（1-2文）/ False=詳細（3-5文、楽器まで記述）
         
         Returns:
             {"caption": str}
@@ -443,21 +449,76 @@ IMPORTANT: Do NOT add romanization or pronunciation in parentheses. Output lyric
         if theme:
             content.append(f"Theme/Concept: {theme}")
         if tags:
-            content.append(f"Genre/Style direction: {tags}")
+            content.append(f"Genre/Style: {tags}")
+        if mood:
+            content.append(f"Mood: {mood}")
+        if vocal:
+            content.append(f"Vocal type: {vocal}")
         if lyrics:
-            content.append(f"Lyrics (use these to infer mood, pacing, and vocal style):\n{lyrics[:1500]}")
+            # thinking=Falseのときは歌詞を多く参照させて詳細な楽器・雰囲気担当を指示する
+            max_lyrics = 800 if not thinking else 500
+            content.append(f"Lyrics (for mood/style reference):\n{lyrics[:max_lyrics]}")
         content.append(f"Vocal language: {language}")
         
-        prompt = "\n\n".join(content) + "\n\nWrite a detailed, production-level music caption. Include specific instruments with playing techniques, vocal characteristics, arrangement dynamics, and production style. Be precise and avoid generic descriptions."
+        # vocal/mood の強制挿入フレーズを事前に組み立てる
+        vocal_instruction = f' You MUST describe the vocal as "{vocal}".' if vocal else ""
+        mood_instruction = f' The mood MUST be "{mood}".' if mood else ""
+
+        if thinking:
+            # builtin=OFF + thinking=ON: 短いヒントだけで十分、ACE-Stepの内部思考が補完する
+            prompt = (
+                "\n\n".join(content) +
+                "\n\n---\n"
+                "Write ONE complete English prose sentence describing this music.\n"
+                "Follow this template exactly:\n"
+                "  \"A [genre/era] [song/track] with [mood/atmosphere] and [vocal description].\"\n\n"
+                f"IMPORTANT: Use the exact Mood and Vocal type listed above.{mood_instruction}{vocal_instruction}\n\n"
+                "GOOD: \"A dramatic anime opening song with an intense, emotionally charged atmosphere and a powerful male vocal.\"\n"
+                "GOOD: \"A nostalgic 1980s city-pop track with a warm, breezy mood and a smooth female vocal.\"\n"
+                "BAD:  \"Anime song, dramatic, energetic, emotional, opening theme, Japanese anime soundtrack.\"\n\n"
+                "Output ONLY the sentence. No commentary, no lists, no extra lines."
+            )
+            system_prompt = CAPTION_GENERATE_SYSTEM_PROMPT
+            max_tokens = 120
+        else:
+            # builtin=OFF + thinking=OFF: LLMが完全な制作指示書を生成する必要がある
+            prompt = (
+                "\n\n".join(content) +
+                "\n\n---\n"
+                "Write 3-5 complete English prose sentences as a detailed music production blueprint.\n"
+                "Cover ALL of the following in natural sentence form:\n"
+                "  1. Genre + era\n"
+                "  2. Mood / emotional atmosphere\n"
+                f"  3. 2-3 specific instruments and their playing style\n"
+                "  4. Rhythm / tempo character\n"
+                f"  5. Vocal type and delivery — MUST use the exact vocal type: \"{vocal if vocal else 'as appropriate'}\"\n\n"
+                f"IMPORTANT: Use the exact Mood and Vocal type listed above.{mood_instruction}{vocal_instruction}\n\n"
+                "GOOD EXAMPLE (with male vocal):\n"
+                "\"A 2000s J-Pop track with a nostalgic and bittersweet atmosphere. "
+                "Shimmering synth pads and clean piano chords establish a warm foundation, supported by a crisp "
+                "electronic drum beat with subtle snare snaps. "
+                "The lead vocal is a clear, earnest male voice with a smooth mid-range delivery.\"\n\n"
+                "BAD EXAMPLE (never do this):\n"
+                "\"Anime song, dramatic, energetic, emotional, opening theme, Japanese anime soundtrack.\"\n\n"
+                "Output ONLY the prose sentences. No lists, no bullet points, no commentary."
+            )
+            system_prompt = CAPTION_GENERATE_DETAILED_PROMPT
+            max_tokens = 350
         
         response = await self.chat(
             user_message=prompt,
-            system_prompt=CAPTION_GENERATE_SYSTEM_PROMPT,
-            max_tokens=500,
-            temperature=0.8
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=0.7
         )
         
-        return {"caption": self._clean_caption(response)}
+        cleaned = self._clean_caption(response)
+
+        # LLMがvocalを省略した場合は末尾に必ず付加する（ポストプロセス保証）
+        if vocal and vocal.lower() not in cleaned.lower():
+            cleaned = cleaned.rstrip('.') + f", with a {vocal}."
+
+        return {"caption": cleaned}
     
     def _clean_caption(self, response: str) -> str:
         """キャプションレスポンスをクリーンアップ

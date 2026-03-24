@@ -9,6 +9,7 @@ openai>=1.10.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
 python-dotenv>=1.0.0
+itsdangerous>=2.0.0
 
 # ローカルLLMフォールバック（外部LLM接続不可時に使用）
 llama-cpp-python>=0.3.0

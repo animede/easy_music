@@ -101,6 +101,7 @@ class GenerateResponse(BaseModel):
     status: str
     message: str = ""
     queue_position: Optional[int] = None
+    seed: Optional[int] = None
 
 
 class TaskStatusResponse(BaseModel):
@@ -152,6 +153,10 @@ async def generate_music(request: GenerateRequest):
         if request.use_cot_language is not None:
             extra_params["use_cot_language"] = request.use_cot_language
 
+        # seedが未指定の場合はランダム生成して追跡できるようにする
+        import random
+        effective_seed = request.seed if request.seed is not None else random.randint(0, 2**31 - 1)
+
         result = await ace_step_client.release_task(
             prompt=sanitize_caption(request.prompt),
             lyrics=request.lyrics,
@@ -163,7 +168,7 @@ async def generate_music(request: GenerateRequest):
             time_signature=request.time_signature,
             batch_size=request.batch_size,
             audio_format=request.audio_format,
-            seed=request.seed,
+            seed=effective_seed,
             inference_steps=request.inference_steps,
             guidance_scale=request.guidance_scale,
             **extra_params
@@ -179,7 +184,8 @@ async def generate_music(request: GenerateRequest):
             task_id=task_id,
             status="queued",
             message="Task created successfully",
-            queue_position=data.get("queue_position")
+            queue_position=data.get("queue_position"),
+            seed=effective_seed
         )
     
     except (httpx.ConnectError, httpx.ConnectTimeout) as e:
@@ -672,26 +678,31 @@ async def proxy_audio(path: str):
     ACE-Step APIからの音声ファイルをプロキシ
     CORSの問題を回避するため
     """
-    try:
-        # ACE-Step APIのURLを構築
-        audio_url = f"{settings.ace_step_api_url}/v1/audio?path={path}"
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(audio_url, timeout=60.0)
-            
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail="Audio not found")
-            
-            # Content-Typeを取得
-            content_type = response.headers.get("content-type", "audio/mpeg")
-            
-            return StreamingResponse(
-                iter([response.content]),
-                media_type=content_type,
-                headers={
-                    "Accept-Ranges": "bytes",
-                    "Content-Length": str(len(response.content))
-                }
-            )
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch audio: {str(e)}")
+    audio_url = f"{settings.ace_step_api_url}/v1/audio?path={path}"
+    last_err = None
+
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(audio_url, timeout=60.0)
+
+                if response.status_code != 200:
+                    raise HTTPException(status_code=response.status_code, detail="Audio not found")
+
+                # Content-Typeを取得
+                content_type = response.headers.get("content-type", "audio/mpeg")
+
+                return StreamingResponse(
+                    iter([response.content]),
+                    media_type=content_type,
+                    headers={
+                        "Accept-Ranges": "bytes",
+                        "Content-Length": str(len(response.content))
+                    }
+                )
+        except httpx.RequestError as e:
+            last_err = e
+            if attempt < 2:
+                await asyncio.sleep(0.5 * (attempt + 1))
+                continue
+            raise HTTPException(status_code=502, detail=f"Failed to fetch audio: {str(e)}")

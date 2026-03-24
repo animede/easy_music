@@ -1,4 +1,4 @@
-# Easy Music — AI音楽生成アプリ
+# Easy Music v1.4 — AI音楽生成アプリ
 
 ジャンルを選んでワンクリックで音楽を生成するWebアプリケーション。  
 [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) を音楽生成エンジンとして使用します。
@@ -7,10 +7,16 @@
 
 - 🎵 **30ジャンル対応** — J-POP、Rock、Jazz、EDMなど豊富なジャンルタイル
 - 🤖 **AI作詞** — テーマに合わせた歌詞を自動生成
+- 😊 **ムード/ボーカルチップ** — 10種のムードと6種のボーカルタイプをワンタップ指定
 - 📝 **ローカルLLMフォールバック** — 外部LLM接続不可時はQwen3-1.7Bで自動切替
-- 🎛️ **キャプション自動** — ジャンル別の最適キャプション生成
+- 🏛️ **キャプション自動/手動** — ジャンル別の最適キャプション生成＋デバッグパネルで直接編集可
 - 🎼 **AI強化** — BPM・キー自動設定
-- 🔊 **インラインプレイヤー** — スペクトルビジュアライザー付き
+- 🧠 **Thinking モード** — ON/OFFでキャプション生成スタイルを切替
+- 🎚️ **STEP選択** — 8/20/50/80/100ステップで品質と速度を調整
+- 🔊 **インラインプレーヤー** — スペクトルビジュアライザー付き
+- 🔇 **無音音楽自動検出** — Web Audio APIでRMS/ピーク値を解析、無音生成を自動検出
+- 📋 **履歴機能** — 直近10件の生成音楽をリスト表示、選択再生・ダウンロード（ブラウザsessionStorage）
+- 🌐 **日英切替** — ワンクリックでUI言語切替
 
 ## セットアップ
 
@@ -49,6 +55,26 @@ pip install -r requirements.txt
 
 ブラウザで `http://localhost:8889` にアクセス。
 
+### サーバ版（マルチユーザー対応）
+
+複数ユーザーが同時接続する環境でもそのまま使えます。  
+タスクIDはACE-Step APIが生成するUUID（128-bit）であり、推測不可能なためセッション管理なしで安全に動作します。  
+履歴はブラウザのsessionStorageに保存されます（タブごとに独立）。
+
+```bash
+# サーバ版で起動
+./start_server.sh
+
+# ACE-Step APIを指定
+./start_server.sh --ace-url http://YOUR_ACE_HOST:8001
+```
+
+| 項目 | WEBアプリ版 (`start.sh`) | サーバ版 (`start_server.sh`) |
+|------|------------------------|----------------------------|
+| 同時接続 | 単一ユーザー向け | マルチユーザー対応 |
+| 履歴 | sessionStorage | sessionStorage |
+| 機能 | 同一 | 同一 |
+
 ![起動時GUI](startupUI.png)
 
 ### 環境変数 (.env)
@@ -66,12 +92,14 @@ PORT=8889
 
 ```
 easy_music/
-├── main.py                 # FastAPIアプリ
+├── main.py                 # FastAPIアプリ（WEBアプリ版）
+├── main_server.py          # サーバ版（ラッパー）
 ├── config.py               # 設定
 ├── requirements.txt
-├── start.sh
+├── start.sh                # WEBアプリ版起動
+├── start_server.sh         # サーバ版起動
 ├── routers/
-│   ├── generate.py         # 音楽生成API
+│   ├── generate.py         # 音楽生成API（音声プロキシ付き）
 │   └── lyrics.py           # 作詞/テーマ/キャプションAPI
 ├── services/
 │   ├── ace_step_client.py  # ACE-Step APIクライアント
@@ -80,7 +108,7 @@ easy_music/
 ├── templates/
 │   └── index.html          # メインページ
 ├── static/
-│   ├── app.js              # フロントエンドJS
+│   ├── app.js              # フロントエンドJS（無音検出・履歴含む）
 │   ├── style.css           # スタイルシート
 │   └── image/              # ジャンル画像
 ├── models/                 # GGUFモデル（自動ダウンロード）

@@ -22,7 +22,8 @@ Easy Music uses the **ACE-Step 1.5** AI music generation engine to automatically
 
 - 🎵 **30 Genres** — J-POP, Rock, Jazz, EDM, Enka, Vocaloid, and more
 - 🤖 **AI Lyrics** — Auto-generates lyrics based on your theme
-- 🎛️ **Auto Caption** — Generates optimal captions (music style instructions) per genre
+- 😊 **Mood / Vocal Chips** — Pick from 10 moods and 6 vocal types; automatically reflected in AI caption generation
+- 🎛️ **Auto / Manual Caption** — Generates optimal captions (music style instructions) per genre
 - 🎼 **AI Enhancement** — Automatic BPM, key, and time signature estimation
 - 🔊 **Inline Player** — With spectrum visualizer
 - 🌏 **13 Languages** — Japanese, English, Chinese, Korean, and more
@@ -36,9 +37,25 @@ Easy Music uses the **ACE-Step 1.5** AI music generation engine to automatically
 
 Click on a genre tile from the grid. It will highlight in purple when selected.
 
-### Step 2: Enter a Theme (Optional)
+### Step 2: Open Lyrics Settings (Optional)
 
-Write your song idea in the "Theme / Scenario" field. **Leaving it blank is fine** — the AI will come up with a theme automatically.
+Click the **"Lyrics Settings"** accordion to expand three sub-sections. **All are optional — leaving them blank is fine.**
+
+#### 😊 Advanced Options (Mood / Vocal)
+
+Select one mood chip and one vocal chip to shape the song's feel. Your choices are automatically passed to AI caption generation.
+
+| Mood examples | Vocal examples |
+|---|---|
+| 😊 Bright / 😢 Bittersweet / 🔥 Intense / 🍃 Calm | 👩 Female / 👨 Male / 🎤 Powerful |
+| ✨ Mysterious / 💕 Romantic / 🎉 Playful | 🌬️ Whisper / 🎵 Falsetto / 👥 Harmonies |
+| 🌙 Melancholic / 🏔️ Epic / 😎 Cool | |
+
+> 💡 Click again to deselect. When Auto Caption is ON, chips are added as style hints to the built-in caption.
+
+#### 💬 Theme / Scenario
+
+Describe your song idea. **Leaving it blank is fine** — the AI will come up with a theme automatically.
 
 **Examples:**
 ```
@@ -48,11 +65,11 @@ Memories of spending time with a lover at the summer beach
 An afternoon reading at a café on a rainy day
 ```
 
-### Step 3: Enter Lyrics (Optional)
+#### 🎵 Lyrics (AI auto-generates if blank)
 
-You can write your own lyrics in the "Lyrics" field. **If left blank, AI will auto-generate** them.
+You can write your own lyrics. **If left blank, AI will auto-generate** them. Use the **♻️ Regenerate** button to clear and re-generate with AI.
 
-### Step 4: Hit Generate
+### Step 3: Hit Generate
 
 Click the "🎵 Generate Music" button and let the AI do the rest!
 
@@ -63,7 +80,7 @@ Click the "🎵 Generate Music" button and let the AI do the rest!
 4. AI enhancement (auto-set BPM, key, time signature)
 5. Music generation (completes in 1–3 minutes)
 
-### Step 5: Play
+### Step 4: Play
 
 Once complete, a player appears. Enjoy your music with the spectrum visualizer!
 
@@ -149,7 +166,26 @@ Check this to generate vocal-free instrumental tracks. Great for BGM or study mu
 Uses built-in captions (music style instructions) optimized for each genre. ON by default.
 
 - **ON**: Uses the optimal caption preset for the genre tile (recommended)
-- **OFF**: Asks the external LLM to generate a caption (more creative but slower)
+- **OFF**: Asks the external LLM to generate a caption (more creative but slower). Mood/Vocal chips are reflected in the generated text.
+
+### Thinking
+
+Switches the caption generation style.
+
+- **ON** (default): ACE-Step's internal reasoning completes the music. A short hint sentence is passed.
+- **OFF**: The LLM generates a full 3–5-sentence detailed production brief, specifying instruments, rhythm, and vocal style.
+
+### STEP (Quality Steps)
+
+Balances generation quality vs. speed.
+
+| Value | Use case |
+|-------|----------|
+| 8 | Turbo — fast test |
+| 20 | Quick preview |
+| 50 | Standard (recommended) |
+| 80 | High quality |
+| 100 | Best quality (slower) |
 
 ### Details Button
 

@@ -20,6 +20,7 @@ class LyricsGenerateRequest(BaseModel):
     genre: str = Field(default="", description="ジャンル")
     language: str = Field(default="Japanese", description="言語")
     mood: str = Field(default="", description="ムード")
+    vocal: str = Field(default="", description="ボーカルタイプ")
 
 
 class LyricsGenerateResponse(BaseModel):
@@ -54,6 +55,9 @@ class CaptionGenerateRequest(BaseModel):
     theme: str = Field(default="", description="テーマ")
     tags: str = Field(default="", description="既存のタグ")
     language: str = Field(default="Japanese", description="言語")
+    thinking: bool = Field(default=True, description="True=簡潔キャプション / False=詳細キャプション")
+    mood: str = Field(default="", description="ムード")
+    vocal: str = Field(default="", description="ボーカルタイプ")
 
 
 class CaptionGenerateResponse(BaseModel):
@@ -128,7 +132,8 @@ async def generate_lyrics(request: LyricsGenerateRequest):
             theme=request.theme,
             genre=request.genre,
             language=request.language,
-            mood=request.mood
+            mood=request.mood,
+            vocal=request.vocal
         )
         
         return LyricsGenerateResponse(
@@ -186,7 +191,10 @@ async def generate_caption(request: CaptionGenerateRequest):
             lyrics=request.lyrics,
             theme=request.theme,
             tags=request.tags,
-            language=request.language
+            language=request.language,
+            thinking=request.thinking,
+            mood=request.mood,
+            vocal=request.vocal
         )
         
         return CaptionGenerateResponse(

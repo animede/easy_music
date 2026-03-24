@@ -56,6 +56,8 @@ const I18N = {
         status_caption_ai: '🎵 キャプションを生成中...',
         status_enhance: 'AI強化中...',
         status_enhance_ai: '✨ AI強化中（ACE-Step内蔵LLM）...',
+        status_caption_detail: '🎵 キャプション詳細化中...',
+        status_caption_detail_ai: '🎵 キャプション詳細化中（thinkingオフ）...',
         status_task_create: 'タスク作成中...',
         status_generating: '🎵 音楽を生成中...',
         status_complete: '曲 生成完了！',
@@ -76,6 +78,9 @@ const I18N = {
         mode_llm: '外部LLM生成',
         mode_inst: '楽器のみ',
         mode_enhanced: '✅ AI強化済み',
+        mode_detailed: '✅ キャプション詳細化済み',
+        mode_bpm_only: '✅ BPM/Key取得済み',
+        mode_manual: '📝 手動指定',
         mode_skipped: '⚠️ AI強化スキップ',
         mode_no_genre: '(未選択)',
         mode_no_theme: '(なし)',
@@ -98,6 +103,39 @@ const I18N = {
         jukebox_select_hint: 'ジャンルを選んでください（複数可）',
         jukebox_selected_label: '🎶 JUKEBOX — 選択中のジャンル',
         jukebox_return_overlay: '🎵 再生画面に戻る',
+        // Batch / Mood / Blend
+        placeholder_debug_caption: '生成後にキャプションが表示されます。編集すると次回生成時に有効になります。',
+        btn_caption_regen: '♻️ 再生成',
+        btn_lyrics_regen: '♻️ 再生成',
+        label_batch: '曲数',
+        batch_1: '1曲', batch_2: '2曲', batch_4: '4曲',
+        label_steps: 'STEP',
+        label_thinking: 'Thinking',
+        steps_8: '8 (Turbo)', steps_20: '20 (高速)', steps_50: '50 (標準)', steps_80: '80 (高品質)', steps_100: '100 (最高品質)',
+        label_lyrics_settings: '作詞設定',
+        label_options: '詳細オプション',
+        label_mood: 'ムード：',
+        mood_happy: '😊 明るい', mood_sad: '😢 切ない', mood_intense: '🔥 激しい',
+        mood_calm: '🍃 穏やか', mood_mystic: '✨ 神秘的',
+        mood_romantic: '💕 ロマンチック', mood_fun: '🎉 楽しい', mood_dark: '🌙 メランコリック',
+        mood_epic: '🏔️ 壮大', mood_cool: '😎 クール',
+        label_vocal: 'ボーカル：',
+        vocal_female: '👩 女声', vocal_male: '👨 男声', vocal_powerful: '🎤 力強い',
+        vocal_whisper: '🌬️ ウィスパー', vocal_falsetto: '🎵 ファルセット', vocal_harmony: '👥 ハーモニー',
+        label_blend: '➕ ミックス：',
+        blend_none: '（なし）',
+        // History
+        history_title: '履歴',
+        history_empty: '生成履歴はまだありません',
+        history_generating: '生成中...',
+        history_play: '▶',
+        history_download: '⬇️',
+        history_ago_sec: '秒前',
+        history_ago_min: '分前',
+        history_ago_hour: '時間前',
+        history_ago_day: '日前',
+        // Silent audio
+        status_silent: '⚠️ 音楽の生成に失敗しました（無音）。再度お試しください。',
         // Footer (not dynamic, stays in HTML)
     },
     en: {
@@ -156,6 +194,8 @@ const I18N = {
         status_caption_ai: '🎵 Generating caption...',
         status_enhance: 'AI enhancing...',
         status_enhance_ai: '✨ AI enhancing (ACE-Step built-in LLM)...',
+        status_caption_detail: '🎵 Generating detailed caption...',
+        status_caption_detail_ai: '🎵 Detailing caption (thinking off)...',
         status_task_create: 'Creating task...',
         status_generating: '🎵 Generating music...',
         status_complete: ' track(s) generated!',
@@ -174,10 +214,46 @@ const I18N = {
         mode_llm: 'External LLM',
         mode_inst: 'Instrumental',
         mode_enhanced: '✅ AI Enhanced',
+        mode_detailed: '✅ Caption Detailed',
+        mode_bpm_only: '✅ BPM/Key Detected',
+        mode_manual: '📝 Manual Caption',
         mode_skipped: '⚠️ AI Enhancement Skipped',
         mode_no_genre: '(none)',
         mode_no_theme: '(none)',
         mode_no_tags: '(no tags — external LLM generated full caption)',
+        // Batch / Mood / Blend
+        placeholder_debug_caption: 'Caption appears after generation. Edit to override on next run.',
+        btn_caption_regen: '♻️ Regenerate',
+        btn_lyrics_regen: '♻️ Regenerate',
+        label_batch: 'Count',
+        batch_1: '1 track', batch_2: '2 tracks', batch_4: '4 tracks',
+        label_steps: 'STEP',
+        label_thinking: 'Thinking',
+        steps_8: '8 (Turbo)', steps_20: '20 (Fast)', steps_50: '50 (Standard)', steps_80: '80 (High Quality)', steps_100: '100 (Best Quality)',
+        label_options: 'Options',
+        label_lyrics_settings: 'Lyrics Settings',
+        label_mood: 'Mood:',
+        mood_happy: '😊 Bright', mood_sad: '😢 Sad', mood_intense: '🔥 Intense',
+        mood_calm: '🍃 Calm', mood_mystic: '✨ Mystic',
+        mood_romantic: '💕 Romantic', mood_fun: '🎉 Fun', mood_dark: '🌙 Melancholic',
+        mood_epic: '🏔️ Epic', mood_cool: '😎 Cool',
+        label_vocal: 'Vocal:',
+        vocal_female: '👩 Female', vocal_male: '👨 Male', vocal_powerful: '🎤 Powerful',
+        vocal_whisper: '🌬️ Whisper', vocal_falsetto: '🎵 Falsetto', vocal_harmony: '👥 Harmony',
+        label_blend: '➕ Mix with:',
+        blend_none: '(none)',
+        // History
+        history_title: 'History',
+        history_empty: 'No generation history yet',
+        history_generating: 'Generating...',
+        history_play: '▶',
+        history_download: '⬇️',
+        history_ago_sec: 's ago',
+        history_ago_min: 'm ago',
+        history_ago_hour: 'h ago',
+        history_ago_day: 'd ago',
+        // Silent audio
+        status_silent: '⚠️ Music generation failed (silent audio). Please try again.',
     }
 };
 
@@ -236,6 +312,9 @@ function toggleUILang() {
 
 let selectedGenre = null;
 let batchSize = 1;
+let selectedMood = '';          // ムードチップ選択値
+let selectedVocal = '';         // ボーカルチップ選択値
+let selectedBlendGenre = null;  // ジャンルミックス: {name, hint}
 let currentResults = [];
 let currentTrackIndex = 0;
 let currentLyrics = '';
@@ -256,12 +335,21 @@ function toggleDebugPanel() {
     }
 }
 function updateDebugPanel(info) {
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.tagName === 'TEXTAREA') { el.value = val || ''; }
+        else { el.textContent = val || '—'; }
+    };
     if (info.genre !== undefined) set('debug-genre', info.genre);
     if (info.theme !== undefined) set('debug-theme', info.theme);
     if (info.mode !== undefined) set('debug-mode', info.mode);
     if (info.tags !== undefined) set('debug-tags', info.tags);
-    if (info.caption !== undefined) set('debug-caption', info.caption);
+    if (info.caption !== undefined) {
+        set('debug-caption', info.caption);
+        // AIが入力した値なのでユーザー編集フラグをリセット
+        window._captionUserEdited = false;
+    }
     if (info.lang !== undefined) set('debug-lang', info.lang);
     if (info.params !== undefined) set('debug-params', info.params);
 }
@@ -294,6 +382,61 @@ let jukeboxTrackCount = 0;
 let jukeboxNextReady = null;   // {audioUrl, genre, lyrics} or null
 let jukeboxStopRequested = false;
 let jukeboxGenerating = false;
+
+// =============================================================================
+// Silent Audio Detection
+// =============================================================================
+
+/**
+ * 音声URLをfetchしてデコード、RMS音量+ピーク値で無音か判定
+ * @param {string} url - 音声ファイルURL
+ * @returns {Promise<boolean>} true=無音, false=正常
+ */
+async function isSilentAudio(url) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                console.warn('[SilentCheck] fetch failed:', response.status);
+                return true;
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            if (arrayBuffer.byteLength < 1000) {
+                console.warn('[SilentCheck] file too small:', arrayBuffer.byteLength);
+                return true;
+            }
+            const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            // 全チャンネルの RMS + ピーク値を計算
+            let totalRms = 0;
+            let globalPeak = 0;
+            for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+                const data = audioBuffer.getChannelData(ch);
+                // 先頭0.5秒のリードインを飛ばして計測
+                const skip = Math.min(Math.floor(audioBuffer.sampleRate * 0.5), data.length);
+                const len = data.length - skip;
+                if (len <= 0) { totalRms += 0; continue; }
+                let sum = 0;
+                for (let i = skip; i < data.length; i++) {
+                    const v = Math.abs(data[i]);
+                    sum += data[i] * data[i];
+                    if (v > globalPeak) globalPeak = v;
+                }
+                totalRms += Math.sqrt(sum / len);
+            }
+            const avgRms = totalRms / audioBuffer.numberOfChannels;
+            // 判定: RMS < 0.005 (-46 dBFS) かつ ピーク < 0.02 ならば無音
+            const isSilent = avgRms < 0.005 && globalPeak < 0.02;
+            console.log(`[SilentCheck] RMS=${avgRms.toFixed(6)} Peak=${globalPeak.toFixed(6)} → ${isSilent ? 'SILENT' : 'OK'}`);
+            return isSilent;
+        } finally {
+            ctx.close();
+        }
+    } catch (e) {
+        console.warn('[SilentCheck] decode error:', e.message);
+        return true; // デコード失敗も異常扱い
+    }
+}
 
 // =============================================================================
 // API Helper (self-contained)
@@ -438,6 +581,54 @@ function hideSimpleProgress() {
 // Genre Selection
 // =============================================================================
 
+function getBatchSize() {
+    return parseInt(document.getElementById('simple-batch')?.value || '1') || 1;
+}
+
+function getSteps() {
+    return parseInt(document.getElementById('simple-steps')?.value || '50') || 50;
+}
+
+function getThinking() {
+    return document.getElementById('simple-thinking')?.checked !== false;
+}
+
+function getManualCaption() {
+    // ユーザーが実際に編集したときのみ手動指定扱いにする
+    // AIが自動入力した内容はスルー
+    if (!window._captionUserEdited) return '';
+    return (document.getElementById('debug-caption')?.value || '').trim();
+}
+
+function clearManualCaption() {
+    const el = document.getElementById('debug-caption');
+    if (el) el.value = '';
+    window._captionUserEdited = false;
+    window._lastSeed = null;
+}
+
+function clearLyrics() {
+    const el = document.getElementById('simple-lyrics');
+    if (el) el.value = '';
+    window._lastSeed = null;
+}
+
+function getMood() { return selectedMood; }
+function getVocal() { return selectedVocal; }
+
+function setBlendGenre(selectEl) {
+    const val = selectEl.value;
+    if (!val) { selectedBlendGenre = null; return; }
+    const opt = selectEl.options[selectEl.selectedIndex];
+    selectedBlendGenre = { name: val, hint: opt.dataset.hint || val };
+}
+
+function clearBlendGenre() {
+    selectedBlendGenre = null;
+    const sel = document.getElementById('blend-genre-select');
+    if (sel) sel.value = '';
+}
+
 function initGenreGrid() {
     document.querySelectorAll('.genre-tile').forEach(tile => {
         tile.addEventListener('click', () => {
@@ -471,6 +662,49 @@ function initGenreGrid() {
                 selectedGenre = null;
                 instCheckbox.disabled = false;
             }
+            // ジャンルミックス行の表示/非表示
+            const blendRow = document.getElementById('genre-blend-row');
+            if (blendRow) blendRow.style.display = selectedGenre ? 'flex' : 'none';
+            clearBlendGenre();
+        });
+    });
+
+    // ジャンルミックス: 選択肢をメイングリッドと同期して生成
+    const blendSelect = document.getElementById('blend-genre-select');
+    if (blendSelect) {
+        document.querySelectorAll('.genre-tile').forEach(tile => {
+            const opt = document.createElement('option');
+            opt.value = tile.dataset.genre;
+            opt.dataset.hint = tile.dataset.captionHint || '';
+            const labelEl = tile.querySelector('.genre-label');
+            opt.textContent = labelEl ? labelEl.textContent.trim() : tile.dataset.genre;
+            blendSelect.appendChild(opt);
+        });
+    }
+
+    // ムードチップ初期化
+    document.querySelectorAll('#mood-chips .mood-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const isActive = chip.classList.contains('active');
+            document.querySelectorAll('#mood-chips .mood-chip').forEach(c => c.classList.remove('active'));
+            selectedMood = '';
+            if (!isActive) {
+                chip.classList.add('active');
+                selectedMood = chip.dataset.mood;
+            }
+        });
+    });
+
+    // ボーカルチップ初期化
+    document.querySelectorAll('#vocal-chips .mood-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const isActive = chip.classList.contains('active');
+            document.querySelectorAll('#vocal-chips .mood-chip').forEach(c => c.classList.remove('active'));
+            selectedVocal = '';
+            if (!isActive) {
+                chip.classList.add('active');
+                selectedVocal = chip.dataset.vocal;
+            }
         });
     });
 }
@@ -497,6 +731,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const langSelect = document.getElementById('simple-language');
     if (langSelect) {
         langSelect.addEventListener('change', () => clearAutoLyrics());
+    }
+    // debug-captionへの入力を検知して「手動編集」フラグを立てる
+    const captionEl = document.getElementById('debug-caption');
+    if (captionEl) {
+        captionEl.addEventListener('input', () => {
+            window._captionUserEdited = true;
+        });
     }
 });
 
@@ -565,7 +806,9 @@ async function generateSimple() {
                 const lyricsResult = await apiRequest('/api/lyrics', 'POST', {
                     theme: theme || (selectedGenre ? selectedGenre.name : ''),
                     genre: selectedGenre ? selectedGenre.name : '',
-                    language: getSelectedLanguageName()
+                    language: getSelectedLanguageName(),
+                    mood: getMood(),
+                    vocal: getVocal()
                 });
                 console.log('[EasyMusic] Step1: lyrics API result:', lyricsResult.success, 'len=', (lyricsResult.lyrics||'').length);
                 if (lyricsResult.success && lyricsResult.lyrics) {
@@ -585,20 +828,59 @@ async function generateSimple() {
 
         // ---- Step 2: キャプション生成（歌詞確定後に実行） ----
         const useBuiltinCaption = document.getElementById('simple-builtin-caption').checked;
+        const useThinking = getThinking();
         const selectedLangCode = getSelectedLanguage();
         const selectedLangName = getSelectedLanguageName();
-        console.log('[EasyMusic] Step2: language=', selectedLangCode, selectedLangName, 'builtin=', useBuiltinCaption);
+        const manualCaption = getManualCaption();
+        console.log('[EasyMusic] Step2: language=', selectedLangCode, selectedLangName, 'builtin=', useBuiltinCaption, 'manual=', !!manualCaption);
         let caption = '';
         let rawTags = '';  // デバッグ表示用
-        if (useBuiltinCaption) {
-            // ACE-Step内蔵LLMに任せる→ヒント＋テーマを結合して渡し、thinking=trueで内部生成
+        if (manualCaption) {
+            // 手動キャプション指定: AI生成を完全バイパス
+            caption = manualCaption;
+            rawTags = '[手動指定]';
+            console.log('[EasyMusic] Step2: manual caption set, skipping AI generation');
+        } else if (useBuiltinCaption) {
             const hint = selectedGenre ? (selectedGenre.hint || selectedGenre.name) : '';
-            rawTags = hint;  // 元のタグを保存
-            if (hint && theme) {
-                caption = hint + ' | theme: ' + theme;
+            const blendHint = selectedBlendGenre ? (selectedBlendGenre.hint || selectedBlendGenre.name) : '';
+            const combinedHint = blendHint ? `${hint} with ${blendHint} influences` : hint;
+            rawTags = combinedHint;  // 元のタグを保存
+
+            if (useThinking) {
+                // thinking=ON: タグからLLMに1文キャプションを生成させる（タグのコピーを避ける）
+                showSimpleProgress(2, t('status_caption_gen'));
+                showSimpleStatus(t('status_caption_ai'), 'info');
+                try {
+                    const capResult = await apiRequest('/api/caption', 'POST', {
+                        theme: theme,
+                        lyrics: isInst ? '' : effectiveLyrics,
+                        tags: combinedHint,
+                        language: getSelectedLanguageName(),
+                        thinking: true,
+                        mood: getMood(),
+                        vocal: isInst ? '' : getVocal(),
+                    });
+                    if (capResult.success && capResult.caption) {
+                        caption = capResult.caption;
+                        console.log('[EasyMusic] Step2: builtin+thinking → LLM caption len=', caption.length);
+                    } else {
+                        caption = combinedHint || theme || '';
+                        console.warn('[EasyMusic] Step2: builtin+thinking → caption fallback to tags');
+                    }
+                } catch (capErr) {
+                    console.error('[EasyMusic] Step2: builtin+thinking caption error:', capErr);
+                    caption = combinedHint || theme || '';
+                }
             } else {
-                caption = hint || theme || '';
+                // thinking=OFF: hints+theme をそのまま渡し、format_input が詳細キャプションに書き換える
+                const vocalHint = getVocal();
+                const moodHint = getMood();
+                let captionBase = combinedHint || '';
+                if (moodHint) captionBase += (captionBase ? ', ' : '') + moodHint;
+                if (vocalHint) captionBase += (captionBase ? ', ' : '') + vocalHint;
+                caption = (captionBase && theme) ? captionBase + ' | theme: ' + theme : captionBase || theme || '';
             }
+
             // 言語がja以外の場合、キャプションにボーカル言語ヒントを追加
             if (selectedLangCode !== 'ja' && !isInst) {
                 caption += '. Sung in ' + selectedLangName + '.';
@@ -614,14 +896,19 @@ async function generateSimple() {
                     theme: theme,
                     lyrics: isInst ? '' : effectiveLyrics,
                     tags: selectedGenre.hint || selectedGenre.name,
-                    language: getSelectedLanguageName()
+                    language: getSelectedLanguageName(),
+                    thinking: useThinking,
+                    mood: getMood(),
+                    vocal: isInst ? '' : getVocal(),
                 });
                 if (capResult.success && capResult.caption) {
                     caption = capResult.caption;
                 } else {
+                    console.error('[EasyMusic] /api/caption failed:', capResult);
                     caption = selectedGenre.hint || selectedGenre.name;
                 }
-            } catch (_) {
+            } catch (capErr) {
+                console.error('[EasyMusic] /api/caption exception:', capErr);
                 caption = selectedGenre.hint || selectedGenre.name;
             }
         } else if (theme) {
@@ -631,10 +918,14 @@ async function generateSimple() {
                     theme: theme,
                     lyrics: isInst ? '' : effectiveLyrics,
                     tags: '',
-                    language: getSelectedLanguageName()
+                    language: getSelectedLanguageName(),
+                    thinking: useThinking,
+                    mood: getMood(),
+                    vocal: isInst ? '' : getVocal(),
                 });
                 if (capResult.success && capResult.caption) caption = capResult.caption;
-            } catch (_) {}
+                else console.error('[EasyMusic] /api/caption (theme branch) failed:', capResult);
+            } catch (capErr2) { console.error('[EasyMusic] /api/caption (theme branch) exception:', capErr2); }
         }
 
         // インストモード: キャプションを徹底的にインスト向けに補正
@@ -659,26 +950,42 @@ async function generateSimple() {
         console.log('[EasyMusic] Step2.5: sanitized caption len=', caption.length, 'preview=', caption.substring(0, 80));
 
         // ---- Step 2.7: AI強化 (format_input) ----
-        // ACE-Step内蔵LLMでキャプション・歌詞をさらに強化
+        // thinking=true : ACE-Stepが内部推論で補完するため、BPM/Key/拍子のみ取得しキャプションは上書きしない
+        // thinking=false: 内部推論なしのためformat_inputの詳細キャプションを採用してACE-Stepを誘導する
         let formatInputResult = null;
-        showSimpleProgress(3, t('status_enhance'));
-        showSimpleStatus(t('status_enhance_ai'), 'info');
+        if (useThinking) {
+            showSimpleProgress(3, t('status_enhance'));
+            showSimpleStatus(t('status_enhance_ai'), 'info');
+        } else {
+            showSimpleProgress(3, t('status_caption_detail'));
+            showSimpleStatus(t('status_caption_detail_ai'), 'info');
+        }
         try {
             formatInputResult = await apiRequest('/api/format_input', 'POST', {
                 prompt: caption,
                 lyrics: isInst ? '' : effectiveLyrics,
-                temperature: 0.85,
+                // builtin=ON かつ thinking=OFF のみ詳細化が必要
+                // それ以外は BPM/Key 取得だけでよい（LLMまたはthinkingが補完する）
+                temperature: (useBuiltinCaption && !useThinking) ? 0.75 : 0.4,
             });
-            if (formatInputResult.success && formatInputResult.caption) {
-                console.log('[EasyMusic] Step2.7: format_input enhanced caption len=', formatInputResult.caption.length);
-                caption = sanitizeCaption(formatInputResult.caption);
-                // 歌詞も強化版があれば採用（歌詞あり & 強化版が構造タグ付きの場合）
-                if (!isInst && formatInputResult.lyrics && formatInputResult.lyrics.includes('[')) {
-                    effectiveLyrics = formatInputResult.lyrics;
-                    console.log('[EasyMusic] Step2.7: lyrics also enhanced, len=', effectiveLyrics.length);
+            if (formatInputResult.success) {
+                if (useBuiltinCaption && !useThinking) {
+                    // builtin=ON + thinking=OFF: LLMなし・thinkingなし → format_inputの詳細キャプションを採用
+                    if (formatInputResult.caption) {
+                        console.log('[EasyMusic] Step2.7: builtin+no-thinking → using detailed caption len=', formatInputResult.caption.length);
+                        caption = sanitizeCaption(formatInputResult.caption);
+                        if (!isInst && formatInputResult.lyrics && formatInputResult.lyrics.includes('[')) {
+                            effectiveLyrics = formatInputResult.lyrics;
+                        }
+                    }
+                } else {
+                    // それ以外: BPM/Key のみ取得（キャプションは上書きしない）
+                    // - builtin=ON + thinking=ON: シンプルキャプション + ACE-Step思考に任せる
+                    // - builtin=OFF + thinking=ON/OFF: 外部LLMが詳細キャプション生成済み
+                    console.log('[EasyMusic] Step2.7: BPM/Key only (builtin=', useBuiltinCaption, ', thinking=', useThinking, ')');
                 }
             } else {
-                console.log('[EasyMusic] Step2.7: format_input returned no enhancement, using original');
+                console.log('[EasyMusic] Step2.7: format_input returned no result, using original');
             }
         } catch (e) {
             console.warn('[EasyMusic] Step2.7: format_input failed, continuing with original caption:', e.message);
@@ -691,13 +998,13 @@ async function generateSimple() {
         const params = {
             prompt: caption || (selectedGenre ? selectedGenre.name : theme),
             lyrics: effectiveLyrics,
-            thinking: true,
+            thinking: useThinking,
             vocal_language: isInst ? '' : getSelectedLanguage(),
             audio_duration: getSelectedDuration(),
-            batch_size: 1,
+            batch_size: getBatchSize(),
             audio_format: 'mp3',
-            inference_steps: window._simpleSteps || 50, // model-aware
-            guidance_scale: isInst ? 18.0 : 15.0, // インスト時はプロンプト忠実度を上げる
+            inference_steps: getSteps(), // ユーザー設定値
+            guidance_scale: isInst ? 18.0 : 18.0, // プロンプト忠実度を上げてクリアな音質に
             // CoT（Chain-of-Thought）による品質強化
             use_cot_caption: true,
             use_cot_language: true,
@@ -710,23 +1017,53 @@ async function generateSimple() {
             if (formatInputResult.time_signature) params.time_signature = formatInputResult.time_signature;
         }
 
+        // ---- Seed 固定（歌詞またはキャプションが既存の場合、前回のseedを再利用） ----
+        // → 同じ「音楽的骨格」を保ちつつ、歌詞・キャプションの変更だけを反映できる
+        const isReusingExisting = !!(manualCaption || lyrics);  // lyrics = 元々入力欄にあった値
+        if (isReusingExisting && window._lastSeed != null) {
+            params.seed = window._lastSeed;
+            console.log('[EasyMusic] Step3: reusing lastSeed=', window._lastSeed, '(manualCaption=', !!manualCaption, ', lyrics=', !!lyrics, ')');
+        } else {
+            console.log('[EasyMusic] Step3: no seed (fresh generation)');
+        }
+
         // デバッグパネル更新
         const formatInfo = formatInputResult && formatInputResult.success
-            ? t('mode_enhanced') + (params.bpm ? ' / BPM=' + params.bpm : '') + (params.key_scale ? ' / Key=' + params.key_scale : '') + (params.time_signature && params.time_signature !== '4' ? ' / Time=' + params.time_signature : '')
+            ? (manualCaption ? t('mode_bpm_only')
+                : useThinking ? t('mode_enhanced')
+                : (useBuiltinCaption ? t('mode_detailed') : t('mode_bpm_only')))
+              + (params.bpm ? ' / BPM=' + params.bpm : '') + (params.key_scale ? ' / Key=' + params.key_scale : '') + (params.time_signature && params.time_signature !== '4' ? ' / Time=' + params.time_signature : '')
             : t('mode_skipped');
         updateDebugPanel({
             genre: selectedGenre ? selectedGenre.name : t('mode_no_genre'),
             theme: theme || t('mode_no_theme'),
-            mode: (useBuiltinCaption ? t('mode_builtin') : t('mode_llm')) + (isInst ? ' / ' + t('mode_inst') : '') + ' / ' + formatInfo,
+            mode: (manualCaption ? t('mode_manual') : (useBuiltinCaption ? t('mode_builtin') : t('mode_llm'))) + (isInst ? ' / ' + t('mode_inst') : '') + ' / ' + formatInfo,
             tags: rawTags || t('mode_no_tags'),
             caption: params.prompt,
             lang: selectedLangName + ' (' + selectedLangCode + ')' + (isInst ? ' → instrumental' : ''),
-            params: 'steps=' + params.inference_steps + ' / guidance=' + params.guidance_scale + ' / duration=' + params.audio_duration + 's / thinking=' + params.thinking + ' / cot_caption=true / cot_lang=true' + (params.bpm ? ' / bpm=' + params.bpm : '') + (params.key_scale ? ' / key=' + params.key_scale : '')
+            params: 'steps=' + params.inference_steps + ' / guidance=' + params.guidance_scale + ' / duration=' + params.audio_duration + 's / thinking=' + params.thinking + ' / cot_caption=true / cot_lang=true' + (params.bpm ? ' / bpm=' + params.bpm : '') + (params.key_scale ? ' / key=' + params.key_scale : '') + (params.seed != null ? ' / seed=' + params.seed : '')
         });
 
         const createResult = await apiRequest('/api/generate', 'POST', params);
         const taskId = createResult.task_id;
         if (!taskId) throw new Error(t('status_task_fail'));
+
+        // 履歴に登録（生成開始時点）
+        addHistoryEntry({
+            task_id: taskId,
+            genre: selectedGenre ? selectedGenre.name : '',
+            caption: (params.prompt || '').substring(0, 80),
+            duration: params.audio_duration,
+        });
+
+        // 生成開始時点でseedが確定 → デバッグパネルに即表示
+        if (createResult.seed != null) {
+            window._lastSeed = createResult.seed;
+            const paramsEl = document.getElementById('debug-params');
+            if (paramsEl && !paramsEl.textContent.includes('seed=')) {
+                paramsEl.textContent = paramsEl.textContent.replace(/\s*$/, '') + ' / seed=' + createResult.seed;
+            }
+        }
 
         const expectedTime = estimateGenerationTime(params);
         const maxPolls = 300;
@@ -746,13 +1083,43 @@ async function generateSimple() {
                 if (statusResult.results && statusResult.results.length > 0) {
                     currentResults = statusResult.results;
                     currentLyrics = effectiveLyrics;
+                    // 最初のトラックのseedを保存（歌詞/キャプション編集時に再利用）
+                    if (currentResults[0].seed != null) {
+                        window._lastSeed = currentResults[0].seed;
+                        console.log('[EasyMusic] lastSeed saved:', window._lastSeed);
+                        // デバッグパネルのparamsにseedを後から追記
+                        const paramsEl = document.getElementById('debug-params');
+                        if (paramsEl) {
+                            const cur = paramsEl.textContent || '';
+                            if (!cur.includes('seed=')) {
+                                paramsEl.textContent = cur.replace(/\s*$/, '') + ' / seed=' + window._lastSeed;
+                            }
+                        }
+                    }
+                    // 無音検出: プレーヤー表示前にチェック
+                    const firstUrl = convertAudioUrl(currentResults[0].url);
+                    const silent = await isSilentAudio(firstUrl);
+                    if (silent) {
+                        hideOverlay();
+                        showSimpleStatus(t('status_silent'), 'error');
+                        removeHistoryEntry(taskId);
+                        hideSimpleProgress();
+                        return;
+                    }
+
                     showInlinePlayer();
                     playSimpleTrack(0);
                     showSimpleStatus(`✅ ${currentResults.length}${t('status_complete')}`, 'success');
+
+                    // 履歴を更新（完了 + audio URLs）
+                    const audioUrls = currentResults.map(r => convertAudioUrl(r.url));
+                    updateHistoryEntry(taskId, audioUrls);
                 }
                 hideSimpleProgress();
                 return;
             } else if (statusResult.status === 2) {
+                // 失敗した履歴エントリを削除
+                removeHistoryEntry(taskId);
                 // エラーメッセージからJSON文字列を除去して読みやすくする
                 let errMsg = statusResult.error || t('status_fail');
                 try {
@@ -769,6 +1136,8 @@ async function generateSimple() {
             showSimpleProgress(progress, progressText);
         }
 
+        // タイムアウトした履歴エントリを削除
+        removeHistoryEntry(taskId);
         throw new Error(t('status_timeout'));
 
     } catch (e) {
@@ -1294,6 +1663,185 @@ function initOverlay() {
 }
 
 // =============================================================================
+// History — 直近10件の生成履歴（sessionStorage でブラウザ側完結）
+// =============================================================================
+
+const MAX_LOCAL_HISTORY = 10;
+
+/** sessionStorage から履歴を取得 */
+function _getHistoryStore() {
+    return JSON.parse(sessionStorage.getItem('easymusic_history') || '[]');
+}
+
+/** sessionStorage に履歴を保存 */
+function _setHistoryStore(history) {
+    sessionStorage.setItem('easymusic_history', JSON.stringify(history));
+}
+
+/**
+ * 履歴エントリを追加（生成開始時に呼ぶ）
+ */
+function addHistoryEntry(entry) {
+    const history = _getHistoryStore();
+    if (history.some(h => h.task_id === entry.task_id)) return;
+    entry.created_at = Math.floor(Date.now() / 1000);
+    entry.audio_urls = [];
+    entry.status = 'generating';
+    history.push(entry);
+    if (history.length > MAX_LOCAL_HISTORY) history.splice(0, history.length - MAX_LOCAL_HISTORY);
+    _setHistoryStore(history);
+    renderHistory();
+}
+
+/**
+ * 履歴エントリを更新（生成完了時に呼ぶ）
+ */
+function updateHistoryEntry(taskId, audioUrls) {
+    const history = _getHistoryStore();
+    const entry = history.find(h => h.task_id === taskId);
+    if (entry) {
+        entry.audio_urls = audioUrls;
+        entry.status = 'completed';
+        _setHistoryStore(history);
+    }
+    renderHistory();
+}
+
+/**
+ * 履歴エントリを削除（生成失敗・タイムアウト時に呼ぶ）
+ */
+function removeHistoryEntry(taskId) {
+    if (!taskId) return;
+    const history = _getHistoryStore();
+    const filtered = history.filter(h => h.task_id !== taskId);
+    _setHistoryStore(filtered);
+    renderHistory();
+}
+
+/**
+ * 古い「生成中」エントリをクリーンアップ
+ */
+function cleanupStaleHistory() {
+    const STALE_THRESHOLD = 120; // 2分
+    const now = Math.floor(Date.now() / 1000);
+    const history = _getHistoryStore();
+    const cleaned = history.filter(h => {
+        if (h.status === 'generating' && h.created_at && (now - h.created_at) > STALE_THRESHOLD) {
+            return false;
+        }
+        return true;
+    });
+    if (cleaned.length !== history.length) {
+        _setHistoryStore(cleaned);
+    }
+}
+
+/**
+ * 履歴データ取得（新しい順）
+ */
+function getHistory() {
+    return [..._getHistoryStore()].reverse();
+}
+
+/**
+ * 経過時間を表示用テキストに変換
+ */
+function timeAgo(unixSec) {
+    const diff = Math.floor(Date.now() / 1000) - unixSec;
+    if (diff < 60) return diff + t('history_ago_sec');
+    if (diff < 3600) return Math.floor(diff / 60) + t('history_ago_min');
+    if (diff < 86400) return Math.floor(diff / 3600) + t('history_ago_hour');
+    return Math.floor(diff / 86400) + t('history_ago_day');
+}
+
+/**
+ * 履歴パネルを描画
+ */
+function renderHistory() {
+    const container = document.getElementById('history-list');
+    if (!container) return;
+
+    // 描画前に古い「生成中」エントリを自動除去（2分超）
+    cleanupStaleHistory();
+    const history = getHistory();
+
+    if (history.length === 0) {
+        container.innerHTML = `<div class="history-empty">${t('history_empty')}</div>`;
+        return;
+    }
+
+    container.innerHTML = history.map((entry, idx) => {
+        const genre = entry.genre || '—';
+        const caption = entry.caption || '';
+        const dur = entry.duration ? `${entry.duration}s` : '';
+        const ago = entry.created_at ? timeAgo(entry.created_at) : '';
+        const isReady = entry.status === 'completed' && entry.audio_urls && entry.audio_urls.length > 0;
+        const statusBadge = isReady
+            ? ''
+            : `<span class="history-badge generating">${t('history_generating')}</span>`;
+        const dismissBtn = !isReady
+            ? `<button class="history-dismiss-btn" onclick="dismissHistoryEntry('${escapeHtml(entry.task_id)}')" title="Remove">✕</button>`
+            : '';
+
+        const audioUrl = isReady ? entry.audio_urls[0] : '';
+
+        return `<div class="history-item${isReady ? ' ready' : ''}" data-index="${idx}">
+            <div class="history-info">
+                <span class="history-genre">${escapeHtml(genre)}</span>
+                <span class="history-caption">${escapeHtml(caption)}</span>
+                <span class="history-meta">${dur} · ${ago}</span>
+                ${statusBadge}
+            </div>
+            <div class="history-actions">
+                ${isReady ? `<button class="history-play-btn" onclick="playFromHistory(${idx})" title="Play">${t('history_play')}</button>` : ''}
+                ${isReady ? `<a class="history-dl-btn" href="${escapeHtml(audioUrl)}" download title="Download">${t('history_download')}</a>` : ''}
+                ${dismissBtn}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/**
+ * 「生成中」エントリを手動で消す
+ */
+function dismissHistoryEntry(taskId) {
+    removeHistoryEntry(taskId);
+}
+
+/** HTML エスケープ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * 履歴から再生
+ */
+function playFromHistory(idx) {
+    const history = getHistory();
+    const entry = history[idx];
+    if (!entry || !entry.audio_urls || entry.audio_urls.length === 0) return;
+
+    currentResults = entry.audio_urls.map(url => ({ url }));
+    currentLyrics = '';
+    showInlinePlayer();
+    playSimpleTrack(0);
+
+    // オーバーレイにジャンル反映
+    if (entry.genre) {
+        currentOverlayGenre = entry.genre;
+    }
+}
+
+/**
+ * 履歴初期化（DOMContentLoaded 後に呼ぶ）
+ */
+function initHistory() {
+    cleanupStaleHistory();
+    renderHistory();
+}
+
+// =============================================================================
 // Initialization
 // =============================================================================
 
@@ -1303,6 +1851,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initGenreGrid();
     initAudioSync();
     initOverlay();
+    initHistory();
 
     // テーマ変更時に歌詞をクリア
     document.getElementById('simple-theme').addEventListener('input', () => {
@@ -1321,11 +1870,13 @@ async function loadModelInfo() {
         const result = await apiRequest('/api/models');
         if (result.success) {
             const modelName = (result.default_model || '').toLowerCase();
-            // Store for generate params
+            const stepsEl = document.getElementById('simple-steps');
             if (modelName.includes('turbo')) {
                 window._simpleSteps = 8;
+                if (stepsEl) stepsEl.value = '8';
             } else {
                 window._simpleSteps = 50;
+                if (stepsEl) stepsEl.value = '50';
             }
         }
     } catch (_) {
@@ -1458,6 +2009,8 @@ async function startJukebox() {
     if (jbPlayer) jbPlayer.classList.add('visible');
 
     document.querySelectorAll('.genre-tile').forEach(t => t.style.pointerEvents = 'none');
+    const batchSel = document.getElementById('simple-batch');
+    if (batchSel) batchSel.disabled = true;
 
     try {
         await jukeboxLoop();
@@ -1475,6 +2028,7 @@ async function startJukebox() {
     npEl.classList.remove('visible');
     showReturnToOverlayBtn(false);
     document.querySelectorAll('.genre-tile').forEach(t => t.style.pointerEvents = '');
+    if (batchSel) batchSel.disabled = false;
     hideSimpleProgress();
 }
 
@@ -1592,19 +2146,18 @@ async function jukeboxGenerateOne() {
             caption = sanitizeCaption(caption);
 
             // Step 2.7: AI強化
+            // JUKEBOXもbuiltinキャプションモード：format_inputのBPM/Keyのみ利用、キャプションは上書きしない
             let formatInputResult = null;
             showSimpleProgress(8, t('status_enhance'));
             try {
                 formatInputResult = await apiRequest('/api/format_input', 'POST', {
                     prompt: caption,
                     lyrics: isInst ? '' : effectiveLyrics,
-                    temperature: 0.85,
+                    temperature: 0.4,
                 });
-                if (formatInputResult.success && formatInputResult.caption) {
-                    caption = sanitizeCaption(formatInputResult.caption);
-                    if (!isInst && formatInputResult.lyrics && formatInputResult.lyrics.includes('[')) {
-                        effectiveLyrics = formatInputResult.lyrics;
-                    }
+                // 歌詞強化は利用、キャプションは上書きしない
+                if (formatInputResult.success && !isInst && formatInputResult.lyrics && formatInputResult.lyrics.includes('[')) {
+                    effectiveLyrics = formatInputResult.lyrics;
                 }
             } catch (_) {}
 
@@ -1615,13 +2168,13 @@ async function jukeboxGenerateOne() {
             const params = {
                 prompt: caption || genre.name,
                 lyrics: effectiveLyrics,
-                thinking: true,
+                thinking: getThinking(),
                 vocal_language: isInst ? '' : getSelectedLanguage(),
                 audio_duration: getSelectedDuration(),
                 batch_size: 1,
                 audio_format: 'mp3',
-                inference_steps: window._simpleSteps || 50,
-                guidance_scale: isInst ? 18.0 : 15.0,
+                inference_steps: getSteps(), // ユーザー設定値
+                guidance_scale: isInst ? 18.0 : 18.0, // プロンプト忠実度上山でクリアな音質に
                 use_cot_caption: true,
                 use_cot_language: true,
             };
@@ -1634,6 +2187,14 @@ async function jukeboxGenerateOne() {
             const createResult = await apiRequest('/api/generate', 'POST', params);
             const taskId = createResult.task_id;
             if (!taskId) throw new Error(t('status_task_fail'));
+
+            // 履歴に登録（JUKEBOX）
+            addHistoryEntry({
+                task_id: taskId,
+                genre: genre.name,
+                caption: (caption || '').substring(0, 80),
+                duration: params.audio_duration,
+            });
 
             const expectedTime = estimateGenerationTime(params);
             let polls = 0;
@@ -1653,6 +2214,15 @@ async function jukeboxGenerateOne() {
                     showSimpleProgress(100, '✅');
                     if (statusResult.results && statusResult.results.length > 0) {
                         const url = convertAudioUrl(statusResult.results[0].url);
+                        // 無音検出: 無音ならリトライとして扱う
+                        if (await isSilentAudio(url)) {
+                            console.warn('[JUKEBOX] silent audio detected, retrying');
+                            removeHistoryEntry(taskId);
+                            throw new Error('Silent audio');
+                        }
+                        // 履歴を完了に更新（JUKEBOX）
+                        const audioUrls = statusResult.results.map(r => convertAudioUrl(r.url));
+                        updateHistoryEntry(taskId, audioUrls);
                         jukeboxGenerating = false;
                         return { audioUrl: url, genre: genre.name, lyrics: effectiveLyrics };
                     }

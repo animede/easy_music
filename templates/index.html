@@ -6,7 +6,7 @@
     <title>Easy Music — AI音楽生成</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="/static/style.css?v=20260312b">
+    <link rel="stylesheet" href="/static/style.css?v=20260317b">
 </head>
 <body>
     <div class="simple-container">
@@ -130,6 +130,14 @@
             </div>
         </section>
 
+        <!-- ジャンルミックス（通常モードでジャンル選択時に表示） -->
+        <div class="genre-blend-row normal-mode-section" id="genre-blend-row">
+            <span class="blend-label" data-i18n="label_blend">➕ ミックス：</span>
+            <select class="simple-select blend-select" id="blend-genre-select" onchange="setBlendGenre(this)">
+                <option value="" data-i18n="blend_none">（なし）</option>
+            </select>
+        </div>
+
         <!-- 生成コントロール -->
         <section class="simple-section control-bar">
             <div class="control-row">
@@ -165,6 +173,24 @@
                     </select>
                 </div>
                 <div class="control-item">
+                    <label data-i18n="label_batch">曲数</label>
+                    <select class="simple-select" id="simple-batch">
+                        <option value="1" selected data-i18n="batch_1">1曲</option>
+                        <option value="2" data-i18n="batch_2">2曲</option>
+                        <option value="4" data-i18n="batch_4">4曲</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label data-i18n="label_steps">STEP</label>
+                    <select class="simple-select" id="simple-steps">
+                        <option value="8" data-i18n="steps_8">8 (Turbo)</option>
+                        <option value="20" data-i18n="steps_20">20 (高速)</option>
+                        <option value="50" selected data-i18n="steps_50">50 (標準)</option>
+                        <option value="80" data-i18n="steps_80">80 (高品質)</option>
+                        <option value="100" data-i18n="steps_100">100 (最高品質)</option>
+                    </select>
+                </div>
+                <div class="control-item">
                     <label class="inst-check">
                         <input type="checkbox" id="simple-inst">
                         <span data-i18n="label_inst">楽器のみ</span>
@@ -177,25 +203,69 @@
                     </label>
                 </div>
                 <div class="control-item">
+                    <label class="inst-check">
+                        <input type="checkbox" id="simple-thinking" checked>
+                        <span data-i18n="label_thinking">Thinking</span>
+                    </label>
+                </div>
+                <div class="control-item">
                     <button class="debug-info-btn" id="debug-info-btn" onclick="toggleDebugPanel()" data-i18n="btn_debug">詳細情報</button>
                 </div>
             </div>
         </section>
 
-        <!-- テーマ入力（折りたたみ） -->
-        <details class="simple-section normal-mode-section collapsible-section">
-            <summary class="section-label collapsible-summary" data-i18n="label_theme">テーマ / シナリオ</summary>
-            <input type="text" id="simple-theme" class="simple-input"
-                   data-i18n-placeholder="placeholder_theme"
-                   placeholder="例: 夜空を見上げて願いを込める魔法少女の物語">
-        </details>
+        <!-- 作詞設定アコーディオン（詳細オプション + テーマ + 歌詞をまとめて開閉） -->
+        <details class="simple-section normal-mode-section collapsible-section lyrics-settings-accordion">
+            <summary class="section-label collapsible-summary" data-i18n="label_lyrics_settings">作詞設定</summary>
+            <div class="lyrics-settings-body">
 
-        <!-- 歌詞入力（折りたたみ） -->
-        <details class="simple-section normal-mode-section collapsible-section">
-            <summary class="section-label collapsible-summary" data-i18n="label_lyrics">歌詞（空欄ならAIが自動生成）</summary>
-            <textarea id="simple-lyrics" class="simple-textarea"
-                      data-i18n-placeholder="placeholder_lyrics"
-                      placeholder="[verse]&#10;星の海に浮かぶ願いが&#10;夜空を駆け巡る&#10;&#10;[chorus]&#10;輝く未来へ..."></textarea>
+                <!-- 詳細オプション -->
+                <div class="subsection-label" data-i18n="label_options">詳細オプション</div>
+                <div class="options-body">
+                    <div class="options-row">
+                        <span class="options-label" data-i18n="label_mood">ムード：</span>
+                        <div class="mood-chips" id="mood-chips">
+                            <button class="mood-chip" data-mood="bright and happy" data-i18n="mood_happy">😊 明るい</button>
+                            <button class="mood-chip" data-mood="bittersweet and sad" data-i18n="mood_sad">😢 切ない</button>
+                            <button class="mood-chip" data-mood="intense and powerful" data-i18n="mood_intense">🔥 激しい</button>
+                            <button class="mood-chip" data-mood="calm and gentle" data-i18n="mood_calm">🍃 穏やか</button>
+                            <button class="mood-chip" data-mood="mysterious and fantastical" data-i18n="mood_mystic">✨ 神秘的</button>
+                            <button class="mood-chip" data-mood="romantic and tender" data-i18n="mood_romantic">💕 ロマンチック</button>
+                            <button class="mood-chip" data-mood="playful and fun" data-i18n="mood_fun">🎉 楽しい</button>
+                            <button class="mood-chip" data-mood="melancholic and dark" data-i18n="mood_dark">🌙 メランコリック</button>
+                            <button class="mood-chip" data-mood="epic and grand" data-i18n="mood_epic">🏔️ 壮大</button>
+                            <button class="mood-chip" data-mood="cool and stylish" data-i18n="mood_cool">😎 クール</button>
+                        </div>
+                    </div>
+                    <div class="options-row">
+                        <span class="options-label" data-i18n="label_vocal">ボーカル：</span>
+                        <div class="mood-chips" id="vocal-chips">
+                            <button class="mood-chip" data-vocal="female vocal" data-i18n="vocal_female">👩 女声</button>
+                            <button class="mood-chip" data-vocal="male vocal" data-i18n="vocal_male">👨 男声</button>
+                            <button class="mood-chip" data-vocal="powerful vocal" data-i18n="vocal_powerful">🎤 力強い</button>
+                            <button class="mood-chip" data-vocal="breathy whisper vocal" data-i18n="vocal_whisper">🌬️ ウィスパー</button>
+                            <button class="mood-chip" data-vocal="falsetto vocal" data-i18n="vocal_falsetto">🎵 ファルセット</button>
+                            <button class="mood-chip" data-vocal="vocal harmonies" data-i18n="vocal_harmony">👥 ハーモニー</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- テーマ / シナリオ -->
+                <div class="subsection-label" data-i18n="label_theme">テーマ / シナリオ</div>
+                <input type="text" id="simple-theme" class="simple-input"
+                       data-i18n-placeholder="placeholder_theme"
+                       placeholder="例: 夜空を見上げて願いを込める魔法少女の物語">
+
+                <!-- 歌詞 -->
+                <div class="subsection-label" data-i18n="label_lyrics">歌詞（空欄ならAIが自動生成）</div>
+                <div class="debug-caption-edit">
+                    <textarea id="simple-lyrics" class="simple-textarea"
+                              data-i18n-placeholder="placeholder_lyrics"
+                              placeholder="[verse]&#10;星の海に浮かぶ願いが&#10;夸空を駆け巡る&#10;&#10;[chorus]&#10;輝く未来へ..."></textarea>
+                    <button class="caption-clear-btn" onclick="clearLyrics()" data-i18n="btn_lyrics_regen" title="クリアして再度AIに生成させる">♻️ 再生成</button>
+                </div>
+
+            </div>
         </details>
 
         <!-- JUKEBOX: Now Playing ステータス -->
@@ -240,6 +310,14 @@
             </div>
             <audio id="simple-audio" crossorigin="anonymous"></audio>
         </section>
+
+        <!-- 生成履歴 -->
+        <section class="simple-section history-section" id="history-section">
+            <label class="section-label" data-i18n="history_title">履歴</label>
+            <div class="history-list" id="history-list">
+                <div class="history-empty" data-i18n="history_empty">生成履歴はまだありません</div>
+            </div>
+        </section>
     </div>
 
     <!-- 円形オーバーレイビジュアライザー -->
@@ -283,9 +361,13 @@
                 <span class="debug-label" data-i18n="debug_tags">タグ (raw)</span>
                 <span class="debug-value debug-caption" id="debug-tags">—</span>
             </div>
-            <div class="debug-row">
+            <div class="debug-row debug-caption-row">
                 <span class="debug-label" data-i18n="debug_caption">キャプション</span>
-                <span class="debug-value debug-caption" id="debug-caption">—</span>
+                <div class="debug-caption-edit">
+                    <textarea class="debug-caption-textarea" id="debug-caption" rows="3" spellcheck="false" data-i18n-placeholder="placeholder_debug_caption"
+                              placeholder="生成後にキャプションが表示されます。編集すると次回生成時に有効になります。"></textarea>
+                    <button class="caption-clear-btn" onclick="clearManualCaption()" data-i18n="btn_caption_regen" title="クリアして再度AIに生成させる">♻️ 再生成</button>
+                </div>
             </div>
             <div class="debug-row">
                 <span class="debug-label" data-i18n="debug_lang">言語</span>
@@ -298,7 +380,7 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=20260312a"></script>
+    <script src="/static/app.js?v=20260318d"></script>
 
     <footer class="simple-footer">
         <p>Powered by <a href="https://github.com/ace-step/ACE-Step" target="_blank" rel="noopener">ACE-Step 1.5</a> &amp; ゆずき</p>
