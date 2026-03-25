@@ -57,16 +57,35 @@ Open `http://localhost:8889` in your browser.
 
 ### Starting the ACE-Step Server
 
-Easy Music connects to the ACE-Step 1.5 REST API server for music generation.  
-Two startup scripts are included in `ace_startup/` for different use cases.  
+Easy Music connects to the ACE-Step 1.5 REST API server for music generation.
+
+#### Standard Startup (Official Command)
+
+The standard startup method provided by the ACE-Step repository.
+
+```bash
+cd /path/to/ACE-Step-1.5
+
+# Recommended (foreground)
+uv run acestep-api --host 0.0.0.0 --port 8001
+
+# Or start uvicorn manually
+python -m uvicorn acestep.api_server:app --host 0.0.0.0 --port 8001 --workers 1
+```
+
+- Default: Turbo model, LM enabled
+- Configurable via environment variables (`ACESTEP_CONFIG_PATH`, `ACESTEP_LM_MODEL_PATH`, etc.)
+- `workers` must be 1 (in-memory queue)
+
+#### Multi-model (Recommended)
+
+Custom startup scripts are included in `ace_startup/` for different use cases.  
 Copy them to your ACE-Step 1.5 installation folder before use.
 
 ```bash
 # Copy scripts to the ACE-Step folder
 cp ace_startup/run_api_server_*.sh /path/to/ACE-Step-1.5/
 ```
-
-#### Multi-model (Recommended)
 
 Loads both Turbo and Base models simultaneously, allowing per-request switching.  
 The UI "Model" selector automatically routes to the correct model.

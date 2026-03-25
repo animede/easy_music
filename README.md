@@ -57,16 +57,35 @@ pip install -r requirements.txt
 
 ### ACE-Step サーバーの起動
 
-Easy Music は ACE-Step 1.5 の REST API サーバーに接続して音楽を生成します。  
-用途に応じて2つの起動スクリプトを `ace_startup/` に同梱しています。  
+Easy Music は ACE-Step 1.5 の REST API サーバーに接続して音楽を生成します。
+
+#### 標準起動（公式コマンド）
+
+ACE-Step リポジトリが提供する標準の起動方法です。
+
+```bash
+cd /path/to/ACE-Step-1.5
+
+# 推奨（フォアグラウンド）
+uv run acestep-api --host 0.0.0.0 --port 8001
+
+# または手動で uvicorn を起動
+python -m uvicorn acestep.api_server:app --host 0.0.0.0 --port 8001 --workers 1
+```
+
+- デフォルト: Turbo モデル、LM 有効
+- 環境変数でモデルや設定を変更可能（`ACESTEP_CONFIG_PATH`, `ACESTEP_LM_MODEL_PATH` 等）
+- `workers` は 1 固定（メモリ内キューのため）
+
+#### マルチモデル起動（推奨）
+
+用途に応じた起動スクリプトを `ace_startup/` に同梱しています。  
 ACE-Step 1.5 のインストールフォルダにコピーして使用してください。
 
 ```bash
 # ace_startup/ のスクリプトを ACE-Step フォルダにコピー
 cp ace_startup/run_api_server_*.sh /path/to/ACE-Step-1.5/
 ```
-
-#### マルチモデル起動（推奨）
 
 Turbo と Base の両モデルを同時にロードし、リクエスト単位で切り替えられます。  
 UI の「モデル」セレクタで Turbo/Base を選択すると自動的に対応モデルが使用されます。
