@@ -13,3 +13,5 @@ build/
 *.log
 docs/音楽生成AI大辞典_アウトライン.md
 docs/音楽生成AI大辞典_アウトライン.md.bak
+docs/soften_tone.py
+docs/soften_tone_pass2.py
