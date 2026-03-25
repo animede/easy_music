@@ -1368,6 +1368,11 @@ body::after {
 .history-section {
     margin-top: 0.5rem;
 }
+.history-section > .collapsible-summary {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
 .history-list {
     display: flex;
     flex-direction: column;

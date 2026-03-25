@@ -1739,6 +1739,9 @@ function updateHistoryEntry(taskId, audioUrls) {
         _setHistoryStore(history);
     }
     renderHistory();
+    // 生成完了時にアコーディオンを自動で開く
+    const historySection = document.getElementById('history-section');
+    if (historySection && !historySection.open) historySection.open = true;
 }
 
 /**
