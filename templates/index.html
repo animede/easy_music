@@ -138,6 +138,17 @@
             </select>
         </div>
 
+        <!-- おまかせ生成（Simple Mode） -->
+        <section class="simple-section normal-mode-section omakase-section" id="omakase-section">
+            <label class="section-label" data-i18n="label_omakase">🪄 おまかせ生成</label>
+            <div class="omakase-row">
+                <input type="text" id="omakase-input" class="simple-input omakase-input"
+                       data-i18n-placeholder="placeholder_omakase"
+                       placeholder="例: 夏の海辺で聴きたい爽やかなポップ">
+                <button class="omakase-random-btn" id="omakase-random-btn" onclick="fillRandomSample()" title="ランダム">🎲 <span data-i18n="btn_random">ランダム</span></button>
+            </div>
+        </section>
+
         <!-- 生成コントロール -->
         <section class="simple-section control-bar">
             <div class="control-row">
@@ -189,37 +200,67 @@
                     </select>
                 </div>
                 <div class="control-item">
-                    <label data-i18n="label_steps">STEP</label>
-                    <select class="simple-select" id="simple-steps">
-                        <option value="8" selected data-i18n="steps_8">8 (Turbo)</option>
-                        <option value="20" data-i18n="steps_20">20 (高速)</option>
-                        <option value="50" data-i18n="steps_50">50 (標準)</option>
-                        <option value="80" data-i18n="steps_80">80 (高品質)</option>
-                        <option value="100" data-i18n="steps_100">100 (最高品質)</option>
-                    </select>
-                </div>
-                <div class="control-item">
                     <label class="inst-check">
                         <input type="checkbox" id="simple-inst">
                         <span data-i18n="label_inst">楽器のみ</span>
                     </label>
                 </div>
-                <div class="control-item">
-                    <label class="inst-check">
-                        <input type="checkbox" id="simple-builtin-caption" checked>
-                        <span data-i18n="label_builtin_caption">キャプション自動</span>
-                    </label>
-                </div>
-                <div class="control-item">
-                    <label class="inst-check">
-                        <input type="checkbox" id="simple-thinking" checked>
-                        <span data-i18n="label_thinking">Thinking</span>
-                    </label>
-                </div>
-                <div class="control-item">
-                    <button class="debug-info-btn" id="debug-info-btn" onclick="toggleDebugPanel()" data-i18n="btn_debug">詳細情報</button>
-                </div>
             </div>
+
+            <!-- 詳細設定アコーディオン -->
+            <details class="collapsible-section advanced-settings-accordion">
+                <summary class="collapsible-summary advanced-summary" data-i18n="label_advanced_settings">詳細設定</summary>
+                <div class="control-row advanced-control-row">
+                    <div class="control-item">
+                        <label data-i18n="label_steps">STEP</label>
+                        <select class="simple-select" id="simple-steps">
+                            <option value="8" selected data-i18n="steps_8">8 (Turbo)</option>
+                            <option value="20" data-i18n="steps_20">20 (高速)</option>
+                            <option value="50" data-i18n="steps_50">50 (標準)</option>
+                            <option value="80" data-i18n="steps_80">80 (高品質)</option>
+                            <option value="100" data-i18n="steps_100">100 (最高品質)</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label data-i18n="label_shift">Shift</label>
+                        <select class="simple-select" id="simple-shift"
+                                data-i18n-title="tooltip_shift"
+                                title="タイムステップシフト。低い値=音質重視、高い値=構造重視">
+                            <option value="auto" selected data-i18n="shift_auto">自動</option>
+                            <option value="1.0" data-i18n="shift_1">1.0 (ディテール重視)</option>
+                            <option value="2.0" data-i18n="shift_2">2.0 (バランス)</option>
+                            <option value="3.0" data-i18n="shift_3">3.0 (Turbo推奨)</option>
+                            <option value="4.0" data-i18n="shift_4">4.0 (構造重視)</option>
+                            <option value="5.0" data-i18n="shift_5">5.0 (最大)</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label data-i18n="label_infer_method">Sampler</label>
+                        <select class="simple-select" id="simple-infer-method"
+                                data-i18n-title="tooltip_infer_method"
+                                title="サンプリング方式。ODE=安定・再現性◎、SDE=多様・有機的な質感">
+                            <option value="auto" selected data-i18n="infer_auto">自動 (ODE)</option>
+                            <option value="ODE" data-i18n="infer_ode">ODE (安定・クリーン)</option>
+                            <option value="SDE" data-i18n="infer_sde">SDE (有機的・多様)</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label class="inst-check">
+                            <input type="checkbox" id="simple-builtin-caption" checked>
+                            <span data-i18n="label_builtin_caption">キャプション自動</span>
+                        </label>
+                    </div>
+                    <div class="control-item">
+                        <label class="inst-check">
+                            <input type="checkbox" id="simple-thinking" checked>
+                            <span data-i18n="label_thinking">Thinking</span>
+                        </label>
+                    </div>
+                    <div class="control-item">
+                        <button class="debug-info-btn" id="debug-info-btn" onclick="toggleDebugPanel()" data-i18n="btn_debug">詳細情報</button>
+                    </div>
+                </div>
+            </details>
         </section>
 
         <!-- 作詞設定アコーディオン（詳細オプション + テーマ + 歌詞をまとめて開閉） -->
@@ -257,6 +298,14 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ネガティブプロンプト -->
+                <div class="subsection-label" data-i18n="label_negative_prompt">ネガティブプロンプト</div>
+                <input type="text" id="negative-prompt" class="simple-input negative-prompt-input"
+                       data-i18n-placeholder="placeholder_negative_prompt"
+                       data-i18n-title="tooltip_negative_prompt"
+                       placeholder="例: low quality, noisy, distorted（空欄ならデフォルト適用）"
+                       title="生成時に避けたい要素を指定します。空欄の場合は品質低下防止のデフォルト値が自動適用されます。">
 
                 <!-- テーマ / シナリオ -->
                 <div class="subsection-label" data-i18n="label_theme">テーマ / シナリオ</div>

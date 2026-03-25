@@ -116,9 +116,20 @@ const I18N = {
         label_steps: 'STEP',
         label_thinking: 'Thinking',
         steps_8: '8 (Turbo)', steps_20: '20 (高速)', steps_50: '50 (標準)', steps_80: '80 (高品質)', steps_100: '100 (最高品質)',
+        label_shift: 'Shift',
+        tooltip_shift: 'タイムステップシフト。低い値=音質・ディテール重視、高い値=楽曲構造・プロンプト忠実度重視',
+        shift_auto: '自動', shift_1: '1.0 (ディテール重視)', shift_2: '2.0 (バランス)',
+        shift_3: '3.0 (Turbo推奨)', shift_4: '4.0 (構造重視)', shift_5: '5.0 (最大)',
+        label_infer_method: 'Sampler',
+        tooltip_infer_method: 'サンプリング方式。ODE=安定・再現性◎、SDE=多様・有機的な質感（高ステップ推奨）',
+        infer_auto: '自動 (ODE)', infer_ode: 'ODE (安定・クリーン)', infer_sde: 'SDE (有機的・多様)',
         label_lyrics_settings: '作詞設定',
+        label_advanced_settings: '詳細設定',
         label_options: '詳細オプション',
         label_mood: 'ムード：',
+        label_negative_prompt: 'ネガティブプロンプト',
+        placeholder_negative_prompt: '例: low quality, noisy, distorted（空欄ならデフォルト適用）',
+        tooltip_negative_prompt: '生成時に避けたい要素を指定します。空欄の場合は品質低下防止のデフォルト値が自動適用されます。',
         mood_happy: '😊 明るい', mood_sad: '😢 切ない', mood_intense: '🔥 激しい',
         mood_calm: '🍃 穏やか', mood_mystic: '✨ 神秘的',
         mood_romantic: '💕 ロマンチック', mood_fun: '🎉 楽しい', mood_dark: '🌙 メランコリック',
@@ -128,6 +139,14 @@ const I18N = {
         vocal_whisper: '🌬️ ウィスパー', vocal_falsetto: '🎵 ファルセット', vocal_harmony: '👥 ハーモニー',
         label_blend: '➕ ミックス：',
         blend_none: '（なし）',
+        // Omakase
+        label_omakase: '🪄 おまかせ生成',
+        placeholder_omakase: '例: 夏の海辺で聴きたい爽やかなポップ',
+        btn_random: 'ランダム',
+        status_omakase: '🪄 おまかせ生成中…AIが全パラメータを自動決定',
+        status_random_loading: '🎲 ランダムサンプルを取得中...',
+        status_random_filled: '🎲 ランダムパラメータをセットしました',
+        status_random_fail: '⚠️ ランダムサンプルの取得に失敗しました',
         // History
         history_title: '履歴',
         history_empty: '生成履歴はまだありません',
@@ -238,9 +257,20 @@ const I18N = {
         label_steps: 'STEP',
         label_thinking: 'Thinking',
         steps_8: '8 (Turbo)', steps_20: '20 (Fast)', steps_50: '50 (Standard)', steps_80: '80 (High Quality)', steps_100: '100 (Best Quality)',
+        label_shift: 'Shift',
+        tooltip_shift: 'Timestep shift. Lower values = detail/texture focus, higher values = structure/prompt fidelity focus',
+        shift_auto: 'Auto', shift_1: '1.0 (Detail)', shift_2: '2.0 (Balanced)',
+        shift_3: '3.0 (Turbo default)', shift_4: '4.0 (Structure)', shift_5: '5.0 (Max)',
+        label_infer_method: 'Sampler',
+        tooltip_infer_method: 'Sampling method. ODE = stable & reproducible, SDE = organic & diverse (needs higher steps)',
+        infer_auto: 'Auto (ODE)', infer_ode: 'ODE (Stable)', infer_sde: 'SDE (Organic)',
         label_options: 'Options',
+        label_advanced_settings: 'Advanced Settings',
         label_lyrics_settings: 'Lyrics Settings',
         label_mood: 'Mood:',
+        label_negative_prompt: 'Negative Prompt',
+        placeholder_negative_prompt: 'e.g. low quality, noisy, distorted (default applied if empty)',
+        tooltip_negative_prompt: 'Specify elements to avoid during generation. If left empty, a default quality-preserving prompt is applied automatically.',
         mood_happy: '😊 Bright', mood_sad: '😢 Sad', mood_intense: '🔥 Intense',
         mood_calm: '🍃 Calm', mood_mystic: '✨ Mystic',
         mood_romantic: '💕 Romantic', mood_fun: '🎉 Fun', mood_dark: '🌙 Melancholic',
@@ -250,6 +280,14 @@ const I18N = {
         vocal_whisper: '🌬️ Whisper', vocal_falsetto: '🎵 Falsetto', vocal_harmony: '👥 Harmony',
         label_blend: '➕ Mix with:',
         blend_none: '(none)',
+        // Omakase
+        label_omakase: '🪄 Quick Generate',
+        placeholder_omakase: 'e.g. A refreshing pop song for a beach day',
+        btn_random: 'Random',
+        status_omakase: '🪄 Quick generating…AI decides all parameters',
+        status_random_loading: '🎲 Loading random sample...',
+        status_random_filled: '🎲 Random parameters set',
+        status_random_fail: '⚠️ Failed to load random sample',
         // History
         history_title: 'History',
         history_empty: 'No generation history yet',
@@ -609,6 +647,30 @@ function getThinking() {
     return document.getElementById('simple-thinking')?.checked !== false;
 }
 
+/** ネガティブプロンプトを取得（空ならデフォルト値を返す） */
+function getNegativePrompt() {
+    const el = document.getElementById('negative-prompt');
+    const val = (el?.value || '').trim();
+    return val || null; // 空の場合 null → デフォルト値はHTML側のplaceholderに表示
+}
+
+/** ネガティブプロンプトのデフォルト値 */
+const DEFAULT_NEGATIVE_PROMPT = 'low quality, noisy, distorted, muddy, clipping, off-key, out of tune, amateur, poorly mixed';
+
+/** Shift値を取得（auto=モデルに応じたデフォルト、それ以外=指定値） */
+function getShift() {
+    const val = document.getElementById('simple-shift')?.value || 'auto';
+    if (val === 'auto') return null; // null → サーバーデフォルト
+    return parseFloat(val);
+}
+
+/** 推論方式を取得（auto=サーバーデフォルト(ODE)、それ以外=ODE/SDE） */
+function getInferMethod() {
+    const val = document.getElementById('simple-infer-method')?.value || 'auto';
+    if (val === 'auto') return null;
+    return val;
+}
+
 function getManualCaption() {
     // ユーザーが実際に編集したときのみ手動指定扱いにする
     // AIが自動入力した内容はスルー
@@ -772,6 +834,190 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// =============================================================================
+// Omakase (Quick Generate) — sample_query mode
+// =============================================================================
+
+/**
+ * おまかせ生成: sample_query を使ってLMに全パラメータを自動決定させる
+ */
+async function generateOmakase(query) {
+    const btn = document.getElementById('simple-generate-btn');
+    btn.disabled = true;
+    btn.innerHTML = t('btn_generating');
+    hideSimpleStatus();
+    showSimpleStatus(t('status_omakase'), 'info');
+
+    try {
+        const aceModel = getAceModel();
+        const params = {
+            prompt: '', // sample_query が全て決定するため空
+            lyrics: '',
+            thinking: true, // おまかせ生成はthinking=true推奨
+            sample_query: query,
+            vocal_language: '',
+            audio_duration: getSelectedDuration(),
+            batch_size: getBatchSize(),
+            audio_format: 'mp3',
+            inference_steps: getSteps(),
+            guidance_scale: aceModel === 'acestep-v15-base' ? 7.0 : 3.0,
+            use_cot_caption: true,
+            use_cot_language: true,
+            // ネガティブプロンプト（品質低下防止）
+            lm_negative_prompt: getNegativePrompt() || DEFAULT_NEGATIVE_PROMPT,
+        };
+        if (aceModel) params.model = aceModel;
+        const omakaseShift = getShift();
+        if (omakaseShift !== null) params.shift = omakaseShift;
+        const omakaseInferMethod = getInferMethod();
+        if (omakaseInferMethod) params.infer_method = omakaseInferMethod;
+
+        showSimpleProgress(5, t('status_task_create'));
+        const createResult = await apiRequest('/api/generate', 'POST', params);
+        const taskId = createResult.task_id;
+        if (!taskId) throw new Error(t('status_task_fail'));
+
+        // デバッグパネル更新
+        updateDebugPanel({
+            genre: '—',
+            theme: query,
+            mode: t('label_omakase'),
+            tags: '—',
+            caption: '(AI auto-generated via sample_query)',
+            lang: '(auto)',
+            params: (params.model ? 'model=' + params.model + ' / ' : 'model=turbo / ') + 'steps=' + params.inference_steps + ' / sample_query / thinking=true'
+        });
+
+        // 履歴に登録
+        addHistoryEntry({
+            task_id: taskId,
+            genre: '🪄 おまかせ',
+            caption: query.substring(0, 80),
+            duration: params.audio_duration,
+        });
+
+        // seed表示
+        if (createResult.seed != null) {
+            window._lastSeed = createResult.seed;
+        }
+
+        // ポーリング
+        const expectedTime = estimateGenerationTime(params);
+        const startTime = Date.now();
+        let pollCount = 0;
+        const maxPolls = 600;
+
+        while (pollCount < maxPolls) {
+            await new Promise(r => setTimeout(r, 1000));
+            pollCount++;
+
+            const elapsed = (Date.now() - startTime) / 1000;
+            const progress = smoothProgress(elapsed, expectedTime);
+            showSimpleProgress(progress, t('status_generating') + ` (${Math.floor(elapsed)}s)`);
+
+            let statusResult;
+            try {
+                statusResult = await apiRequest('/api/status/' + taskId);
+            } catch (_) { continue; }
+
+            if (statusResult.status === 1) {
+                // 成功
+                showSimpleProgress(100);
+                if (statusResult.results && statusResult.results.length > 0) {
+                    const audioUrls = statusResult.results.map(r => convertAudioUrl(r.url));
+                    updateHistoryEntry(taskId, audioUrls);
+
+                    if (statusResult.results[0].seed != null) {
+                        window._lastSeed = statusResult.results[0].seed;
+                    }
+
+                    // 無音チェック
+                    const firstUrl = audioUrls[0];
+                    const silent = await isSilentAudio(firstUrl);
+                    if (silent) {
+                        showSimpleStatus(t('status_silent'), 'error');
+                        removeHistoryEntry(taskId);
+                        hideSimpleProgress();
+                        return;
+                    }
+
+                    // 既存プレーヤーで再生
+                    currentResults = statusResult.results;
+                    currentLyrics = '';
+                    showInlinePlayer();
+                    playSimpleTrack(0);
+                    showSimpleStatus(`✅ ${statusResult.results.length}${t('status_complete')}`, 'success');
+                }
+                return;
+            } else if (statusResult.status === 2) {
+                removeHistoryEntry(taskId);
+                throw new Error(statusResult.error || t('status_gen_fail'));
+            }
+        }
+        removeHistoryEntry(taskId);
+        throw new Error(t('status_timeout'));
+    } catch (e) {
+        showSimpleStatus('❌ ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span data-i18n="btn_generate">${t('btn_generate')}</span>`;
+    }
+}
+
+/**
+ * 🎲ボタン: ランダムサンプルを取得して通常UIフォームに自動入力
+ */
+async function fillRandomSample() {
+    const btn = document.getElementById('omakase-random-btn');
+    btn.classList.add('loading');
+    showSimpleStatus(t('status_random_loading'), 'info');
+
+    try {
+        const result = await apiRequest('/api/random_sample', 'POST');
+        const data = result.data || result;
+
+        // フォームに自動入力
+        if (data.caption) {
+            // おまかせ入力をクリアして通常モードで使えるようにする
+            const omakaseInput = document.getElementById('omakase-input');
+            if (omakaseInput) omakaseInput.value = '';
+
+            // テーマにcaptionをセット
+            const themeEl = document.getElementById('simple-theme');
+            if (themeEl) themeEl.value = data.caption;
+        }
+        if (data.lyrics) {
+            const lyricsEl = document.getElementById('simple-lyrics');
+            if (lyricsEl) lyricsEl.value = data.lyrics;
+        }
+        if (data.duration && data.duration > 0) {
+            const durEl = document.getElementById('simple-duration');
+            if (durEl) {
+                // 最も近い選択肢を選ぶ
+                const options = Array.from(durEl.options).filter(o => o.value !== 'auto');
+                const closest = options.reduce((a, b) =>
+                    Math.abs(parseInt(a.value) - data.duration) < Math.abs(parseInt(b.value) - data.duration) ? a : b
+                );
+                durEl.value = closest.value;
+            }
+        }
+        if (data.vocal_language) {
+            const langEl = document.getElementById('simple-language');
+            if (langEl) {
+                const opt = Array.from(langEl.options).find(o => o.value === data.vocal_language);
+                if (opt) langEl.value = data.vocal_language;
+            }
+        }
+
+        showSimpleStatus(t('status_random_filled'), 'success');
+    } catch (e) {
+        console.error('[EasyMusic] fillRandomSample failed:', e);
+        showSimpleStatus(t('status_random_fail'), 'error');
+    } finally {
+        btn.classList.remove('loading');
+    }
+}
+
 /**
  * AI生成歌詞のみクリア（ユーザーが手入力したものかの判定は難しいのでテーマも同時クリア）
  */
@@ -787,6 +1033,14 @@ function clearAutoLyrics() {
 // =============================================================================
 
 async function generateSimple() {
+    // ---- おまかせ生成モード判定 ----
+    const omakaseInput = document.getElementById('omakase-input');
+    const omakaseQuery = omakaseInput ? omakaseInput.value.trim() : '';
+
+    if (omakaseQuery) {
+        return generateOmakase(omakaseQuery);
+    }
+
     let theme = document.getElementById('simple-theme').value.trim();
     const lyrics = document.getElementById('simple-lyrics').value.trim();
     const isInst = document.getElementById('simple-inst').checked;
@@ -1040,15 +1294,23 @@ async function generateSimple() {
             // CoT（Chain-of-Thought）による品質強化
             use_cot_caption: true,
             use_cot_language: true,
+            // ネガティブプロンプト（品質低下防止）
+            lm_negative_prompt: getNegativePrompt() || DEFAULT_NEGATIVE_PROMPT,
         };
         if (isInst) params.instrumental = true;
         if (aceModel) params.model = aceModel;
+        const normalShift = getShift();
+        if (normalShift !== null) params.shift = normalShift;
+        const normalInferMethod = getInferMethod();
+        if (normalInferMethod) params.infer_method = normalInferMethod;
 
         // format_input で得たBPM・調を反映（AI推奨パラメータ）
         if (formatInputResult && formatInputResult.success) {
             if (formatInputResult.bpm) params.bpm = formatInputResult.bpm;
             if (formatInputResult.key_scale) params.key_scale = formatInputResult.key_scale;
             if (formatInputResult.time_signature) params.time_signature = formatInputResult.time_signature;
+            // format_input で既にメタデータ取得済みなので、生成時の重複推定をスキップ
+            params.use_cot_metas = false;
         }
 
         // ---- Seed 固定（歌詞またはキャプションが既存の場合、前回のseedを再利用） ----
@@ -2219,12 +2481,20 @@ async function jukeboxGenerateOne() {
                 guidance_scale: isInst ? 18.0 : 18.0, // プロンプト忠実度上山でクリアな音質に
                 use_cot_caption: true,
                 use_cot_language: true,
+                // ネガティブプロンプト（品質低下防止）
+                lm_negative_prompt: getNegativePrompt() || DEFAULT_NEGATIVE_PROMPT,
             };
             if (jukeboxAceModel) params.model = jukeboxAceModel;
+            const jukeboxShift = getShift();
+            if (jukeboxShift !== null) params.shift = jukeboxShift;
+            const jukeboxInferMethod = getInferMethod();
+            if (jukeboxInferMethod) params.infer_method = jukeboxInferMethod;
             if (formatInputResult && formatInputResult.success) {
                 if (formatInputResult.bpm) params.bpm = formatInputResult.bpm;
                 if (formatInputResult.key_scale) params.key_scale = formatInputResult.key_scale;
                 if (formatInputResult.time_signature) params.time_signature = formatInputResult.time_signature;
+                // format_input で既にメタデータ取得済みなので、生成時の重複推定をスキップ
+                params.use_cot_metas = false;
             }
 
             const createResult = await apiRequest('/api/generate', 'POST', params);

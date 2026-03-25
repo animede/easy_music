@@ -183,6 +183,21 @@ body::after {
     color: var(--text-primary);
 }
 
+/* 詳細設定アコーディオン（コントロールバー内） */
+.advanced-settings-accordion {
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 6px;
+}
+.advanced-summary {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    padding: 2px 0;
+}
+.advanced-control-row {
+    margin-top: 2px;
+}
+
 /* 作詞設定アコーディオン内部 */
 .lyrics-settings-body {
     display: flex;
@@ -436,6 +451,16 @@ body::after {
     background-position: right 8px center;
     padding-right: 24px;
     min-width: 80px;
+}
+/* STEP / Shift / Sampler: 幅を抑えて横一列に収める */
+#simple-steps,
+#simple-shift,
+#simple-infer-method {
+    min-width: 0;
+    width: auto;
+    padding-right: 20px;
+    font-size: 0.78rem;
+    max-width: 140px;
 }
 .simple-select:hover {
     border-color: var(--border-focus);
@@ -1132,6 +1157,9 @@ body::after {
 @media (max-width: 380px) {
     .genre-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
     .simple-select { font-size: 0.78rem; min-width: 70px; padding: 4px 22px 4px 8px; }
+    #simple-steps,
+    #simple-shift,
+    #simple-infer-method { min-width: 0; max-width: 120px; font-size: 0.73rem; padding-right: 18px; }
 }
 
 /* =============================================================================
@@ -1362,6 +1390,51 @@ body::after {
 }
 .jukebox-active .normal-generate-area {
     display: none;
+}
+
+/* ---------- Omakase (Simple Mode) ---------- */
+.omakase-section {
+    margin-top: 0.3rem;
+}
+.omakase-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.omakase-input {
+    flex: 1;
+}
+.omakase-random-btn {
+    flex-shrink: 0;
+    padding: 0 14px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background var(--transition-fast), transform 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+.omakase-random-btn:hover {
+    background: var(--bg-elevated);
+    transform: scale(1.1);
+}
+.omakase-random-btn:active {
+    transform: scale(0.95);
+}
+.omakase-random-btn.loading {
+    opacity: 0.5;
+    pointer-events: none;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
 }
 
 /* ---------- History Panel ---------- */

@@ -80,13 +80,18 @@ class GenerateRequest(BaseModel):
     seed: Optional[int] = Field(default=None, description="シード値")
     inference_steps: int = Field(default=150, ge=1, le=200, description="推論ステップ数")
     instrumental: bool = Field(default=False, description="インストゥルメンタルモード")
+    sample_query: Optional[str] = Field(default=None, description="おまかせ生成: 自然言語で説明するとLMが全パラメータを自動生成")
     guidance_scale: float = Field(default=3.0, ge=0.0, le=20.0, description="CFGスケール")
+    shift: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="タイムステップシフト（セマンティクス vs ディテール）")
+    infer_method: Optional[str] = Field(default=None, description="推論方式: ODE(決定論的) / SDE(確率的)")
     # LM パラメータ
     lm_temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0, description="LM温度")
     lm_cfg_scale: Optional[float] = Field(default=None, ge=0.0, le=20.0, description="LM CFGスケール")
     lm_top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="LM Top-P")
     use_cot_caption: Optional[bool] = Field(default=None, description="CoTキャプション使用")
     use_cot_language: Optional[bool] = Field(default=None, description="CoT言語判定使用")
+    use_cot_metas: Optional[bool] = Field(default=None, description="CoTメタデータ推定使用")
+    lm_negative_prompt: Optional[str] = Field(default=None, description="LMネガティブプロンプト")
 
 
 class FormatInputRequest(BaseModel):
@@ -153,8 +158,18 @@ async def generate_music(request: GenerateRequest):
             extra_params["use_cot_caption"] = request.use_cot_caption
         if request.use_cot_language is not None:
             extra_params["use_cot_language"] = request.use_cot_language
+        if request.use_cot_metas is not None:
+            extra_params["use_cot_metas"] = request.use_cot_metas
+        if request.lm_negative_prompt:
+            extra_params["lm_negative_prompt"] = request.lm_negative_prompt
+        if request.shift is not None:
+            extra_params["shift"] = request.shift
+        if request.infer_method:
+            extra_params["infer_method"] = request.infer_method
         if request.instrumental:
             extra_params["instrumental"] = True
+        if request.sample_query:
+            extra_params["sample_query"] = request.sample_query
 
         # seedが未指定の場合はランダム生成して追跡できるようにする
         import random
@@ -411,6 +426,16 @@ async def health_check():
         return {"status": "error", "message": str(e)}
 
 
+@router.post("/random_sample")
+async def get_random_sample():
+    """ランダムサンプルパラメータを取得（おまかせ生成用）"""
+    try:
+        result = await ace_step_client.get_random_sample("simple_mode")
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/models")
 async def get_models():
     """ACE-Step APIのモデル情報を取得"""
@@ -487,12 +512,15 @@ async def generate_cover(
     seed: Optional[int] = Form(default=None),
     inference_steps: int = Form(default=8),
     guidance_scale: float = Form(default=3.0),
+    shift: Optional[float] = Form(default=None),
+    infer_method: Optional[str] = Form(default=None),
     audio_cover_strength: float = Form(default=0.8, description="カバー強度 0.0～1.0"),
     lm_temperature: Optional[float] = Form(default=None),
     lm_cfg_scale: Optional[float] = Form(default=None),
     lm_top_p: Optional[float] = Form(default=None),
     use_cot_caption: Optional[bool] = Form(default=None),
     use_cot_language: Optional[bool] = Form(default=None),
+    lm_negative_prompt: Optional[str] = Form(default=None),
 ):
     """
     カバーモードで音楽生成タスクを作成
@@ -541,6 +569,12 @@ async def generate_cover(
             form_fields["use_cot_caption"] = str(use_cot_caption).lower()
         if use_cot_language is not None:
             form_fields["use_cot_language"] = str(use_cot_language).lower()
+        if lm_negative_prompt:
+            form_fields["lm_negative_prompt"] = lm_negative_prompt
+        if shift is not None:
+            form_fields["shift"] = str(shift)
+        if infer_method:
+            form_fields["infer_method"] = infer_method
 
         result = await ace_step_client.release_task_multipart(
             form_fields=form_fields,
@@ -599,6 +633,9 @@ async def generate_repaint(
     lm_top_p: Optional[float] = Form(default=None),
     use_cot_caption: Optional[bool] = Form(default=None),
     use_cot_language: Optional[bool] = Form(default=None),
+    lm_negative_prompt: Optional[str] = Form(default=None),
+    shift: Optional[float] = Form(default=None),
+    infer_method: Optional[str] = Form(default=None),
 ):
     """
     リペイントモードで音楽の一部を再生成
@@ -642,6 +679,12 @@ async def generate_repaint(
             form_fields["use_cot_caption"] = str(use_cot_caption).lower()
         if use_cot_language is not None:
             form_fields["use_cot_language"] = str(use_cot_language).lower()
+        if lm_negative_prompt:
+            form_fields["lm_negative_prompt"] = lm_negative_prompt
+        if shift is not None:
+            form_fields["shift"] = str(shift)
+        if infer_method:
+            form_fields["infer_method"] = infer_method
 
         result = await ace_step_client.release_task_multipart(
             form_fields=form_fields,
