@@ -1534,6 +1534,28 @@ function playSimpleTrack(index) {
 // Audio Time Sync (seek bar & time display)
 // =============================================================================
 
+/** Volume icon update */
+function updateVolumeIcon(vol) {
+    const icon = vol <= 0 ? '🔇' : vol < 0.4 ? '🔈' : vol < 0.7 ? '🔉' : '🔊';
+    document.querySelectorAll('.volume-btn').forEach(b => b.textContent = icon);
+}
+
+/** Mute/unmute toggle */
+let _preMuteVolume = 0.8;
+function toggleMute() {
+    const audio = document.getElementById('simple-audio');
+    if (audio.volume > 0) {
+        _preMuteVolume = audio.volume;
+        audio.volume = 0;
+    } else {
+        audio.volume = _preMuteVolume;
+    }
+    const pct = Math.round(audio.volume * 100);
+    document.querySelectorAll('.volume-bar').forEach(b => b.value = pct);
+    updateVolumeIcon(audio.volume);
+    localStorage.setItem('easymusic_volume', audio.volume.toString());
+}
+
 function initAudioSync() {
     const audio = document.getElementById('simple-audio');
     const seekBar = document.getElementById('seek-bar');
@@ -1569,6 +1591,24 @@ function initAudioSync() {
     // JUKEBOX seek bar
     const jbSeek = document.getElementById('jukebox-seek-bar');
     if (jbSeek) seekHandler(jbSeek);
+
+    // ---- Volume Control ----
+    const savedVol = parseFloat(localStorage.getItem('easymusic_volume') ?? '0.8');
+    audio.volume = Math.max(0, Math.min(1, savedVol));
+    const volPct = Math.round(audio.volume * 100);
+    document.querySelectorAll('.volume-bar').forEach(b => b.value = volPct);
+    updateVolumeIcon(audio.volume);
+
+    document.querySelectorAll('.volume-bar').forEach(bar => {
+        bar.addEventListener('input', () => {
+            const vol = bar.value / 100;
+            audio.volume = vol;
+            localStorage.setItem('easymusic_volume', vol.toString());
+            // Sync all volume bars
+            document.querySelectorAll('.volume-bar').forEach(b => b.value = bar.value);
+            updateVolumeIcon(vol);
+        });
+    });
 
     // Auto-advance to next track
     audio.addEventListener('ended', () => {

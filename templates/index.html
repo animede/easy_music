@@ -353,6 +353,8 @@
                     <a class="dl-btn" id="simple-dl-btn" href="#" download data-i18n-title="title_download" title="ダウンロード">⬇️</a>
                     <input type="range" class="seek-bar" id="seek-bar" min="0" max="100" value="0">
                     <span class="time-display" id="time-display">0:00 / 0:00</span>
+                    <button class="volume-btn" id="volume-btn" onclick="toggleMute()" title="ミュート">🔊</button>
+                    <input type="range" class="volume-bar" id="volume-bar" min="0" max="100" value="80">
                 </div>
             </div>
             <!-- JUKEBOX モード: スタート/ストップ + プレーヤー -->
@@ -363,6 +365,8 @@
                 <div class="inline-player" id="jukebox-inline-player">
                     <input type="range" class="seek-bar" id="jukebox-seek-bar" min="0" max="100" value="0">
                     <span class="time-display" id="jukebox-time-display">0:00 / 0:00</span>
+                    <button class="volume-btn" id="jukebox-volume-btn" onclick="toggleMute()" title="ミュート">🔊</button>
+                    <input type="range" class="volume-bar" id="jukebox-volume-bar" min="0" max="100" value="80">
                 </div>
             </div>
             <audio id="simple-audio" crossorigin="anonymous"></audio>
@@ -395,6 +399,8 @@
             <a class="overlay-dl-btn" id="overlay-dl-btn" href="#" download>⬇️</a>
             <input type="range" class="overlay-seek" id="overlay-seek" min="0" max="100" value="0">
             <span class="overlay-time" id="overlay-time">0:00 / 0:00</span>
+            <button class="volume-btn overlay-volume-btn" id="overlay-volume-btn" onclick="toggleMute()" title="ミュート">🔊</button>
+            <input type="range" class="volume-bar overlay-volume-bar" id="overlay-volume-bar" min="0" max="100" value="80">
         </div>
         <div class="overlay-hint" data-i18n="overlay_hint">タップで閉じる</div>
     </div>

@@ -698,6 +698,26 @@ body::after {
     font-weight: 500;
 }
 
+/* ---------- Volume Control ---------- */
+.volume-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+}
+.volume-btn:hover { opacity: 1; }
+.volume-bar {
+    width: 60px;
+    height: 4px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
 /* ---------- Circle Overlay Visualizer ---------- */
 .circle-overlay {
     position: fixed;
@@ -865,6 +885,14 @@ body::after {
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     font-weight: 500;
+}
+.overlay-volume-btn {
+    color: rgba(255,255,255,0.6);
+    filter: grayscale(0.3);
+}
+.overlay-volume-bar {
+    width: 50px;
+    accent-color: var(--primary-light);
 }
 
 .overlay-hint {
@@ -1151,6 +1179,8 @@ body::after {
     .generate-row { flex-direction: column; }
     .inline-player { width: 100%; }
     .overlay-seek { width: 120px; }
+    .volume-bar { width: 45px; }
+    .overlay-volume-bar { width: 40px; }
     .overlay-controls { padding: 10px 16px; }
 }
 
