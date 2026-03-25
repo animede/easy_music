@@ -1739,9 +1739,6 @@ function updateHistoryEntry(taskId, audioUrls) {
         _setHistoryStore(history);
     }
     renderHistory();
-    // 生成完了時にアコーディオンを自動で開く
-    const historySection = document.getElementById('history-section');
-    if (historySection && !historySection.open) historySection.open = true;
 }
 
 /**
@@ -1801,6 +1798,13 @@ function renderHistory() {
     // 描画前に古い「生成中」エントリを自動除去（2分超）
     cleanupStaleHistory();
     const history = getHistory();
+
+    // アコーディオンのsummaryに件数を表示
+    const summaryEl = document.querySelector('#history-section > .collapsible-summary');
+    if (summaryEl) {
+        const countBadge = history.length > 0 ? ` (${history.length})` : '';
+        summaryEl.textContent = t('history_title') + countBadge;
+    }
 
     if (history.length === 0) {
         container.innerHTML = `<div class="history-empty">${t('history_empty')}</div>`;
