@@ -109,6 +109,9 @@ const I18N = {
         btn_lyrics_regen: '♻️ 再生成',
         label_batch: '曲数',
         batch_1: '1曲', batch_2: '2曲', batch_4: '4曲',
+        label_ace_model: 'モデル',
+        ace_model_turbo: 'Turbo (高速)',
+        ace_model_base: 'Base (高品質)',
         label_steps: 'STEP',
         label_thinking: 'Thinking',
         steps_8: '8 (Turbo)', steps_20: '20 (高速)', steps_50: '50 (標準)', steps_80: '80 (高品質)', steps_100: '100 (最高品質)',
@@ -227,6 +230,9 @@ const I18N = {
         btn_lyrics_regen: '♻️ Regenerate',
         label_batch: 'Count',
         batch_1: '1 track', batch_2: '2 tracks', batch_4: '4 tracks',
+        label_ace_model: 'Model',
+        ace_model_turbo: 'Turbo (Fast)',
+        ace_model_base: 'Base (High Quality)',
         label_steps: 'STEP',
         label_thinking: 'Thinking',
         steps_8: '8 (Turbo)', steps_20: '20 (Fast)', steps_50: '50 (Standard)', steps_80: '80 (High Quality)', steps_100: '100 (Best Quality)',
@@ -517,8 +523,10 @@ function estimateGenerationTime(params) {
     const duration = params.audio_duration || 60;
     const batch = params.batch_size || 1;
     const thinking = params.thinking !== false;
+    const isBase = params.model === 'acestep-v15-base';
     const lmTime = thinking ? 4 : 1.5;
-    const ditTime = steps * duration * 0.006;
+    // base モデルは turbo より遅い（ステップ数が同じでも約1.5倍）
+    const ditTime = steps * duration * (isBase ? 0.009 : 0.006);
     const batchFactor = 1 + (batch - 1) * 0.8;
     const overhead = 2;
     const estimated = (lmTime + ditTime * batchFactor + overhead) * 1.3;
@@ -587,6 +595,12 @@ function getBatchSize() {
 
 function getSteps() {
     return parseInt(document.getElementById('simple-steps')?.value || '50') || 50;
+}
+
+function getAceModel() {
+    const val = document.getElementById('simple-ace-model')?.value || 'turbo';
+    // turbo=デフォルト(model指定なし), base=acestep-v15-base
+    return val === 'base' ? 'acestep-v15-base' : null;
 }
 
 function getThinking() {
@@ -995,6 +1009,7 @@ async function generateSimple() {
         showSimpleProgress(5, t('status_task_create'));
         showSimpleStatus(t('status_generating'), 'info');
 
+        const aceModel = getAceModel();
         const params = {
             prompt: caption || (selectedGenre ? selectedGenre.name : theme),
             lyrics: effectiveLyrics,
@@ -1009,6 +1024,7 @@ async function generateSimple() {
             use_cot_caption: true,
             use_cot_language: true,
         };
+        if (aceModel) params.model = aceModel;
 
         // format_input で得たBPM・調を反映（AI推奨パラメータ）
         if (formatInputResult && formatInputResult.success) {
@@ -1041,7 +1057,7 @@ async function generateSimple() {
             tags: rawTags || t('mode_no_tags'),
             caption: params.prompt,
             lang: selectedLangName + ' (' + selectedLangCode + ')' + (isInst ? ' → instrumental' : ''),
-            params: 'steps=' + params.inference_steps + ' / guidance=' + params.guidance_scale + ' / duration=' + params.audio_duration + 's / thinking=' + params.thinking + ' / cot_caption=true / cot_lang=true' + (params.bpm ? ' / bpm=' + params.bpm : '') + (params.key_scale ? ' / key=' + params.key_scale : '') + (params.seed != null ? ' / seed=' + params.seed : '')
+            params: (params.model ? 'model=' + params.model + ' / ' : 'model=turbo / ') + 'steps=' + params.inference_steps + ' / guidance=' + params.guidance_scale + ' / duration=' + params.audio_duration + 's / thinking=' + params.thinking + ' / cot_caption=true / cot_lang=true' + (params.bpm ? ' / bpm=' + params.bpm : '') + (params.key_scale ? ' / key=' + params.key_scale : '') + (params.seed != null ? ' / seed=' + params.seed : '')
         });
 
         const createResult = await apiRequest('/api/generate', 'POST', params);
@@ -2165,6 +2181,7 @@ async function jukeboxGenerateOne() {
 
             // Step 3: 音楽生成
             showSimpleProgress(10, t('status_generating'));
+            const jukeboxAceModel = getAceModel();
             const params = {
                 prompt: caption || genre.name,
                 lyrics: effectiveLyrics,
@@ -2178,6 +2195,7 @@ async function jukeboxGenerateOne() {
                 use_cot_caption: true,
                 use_cot_language: true,
             };
+            if (jukeboxAceModel) params.model = jukeboxAceModel;
             if (formatInputResult && formatInputResult.success) {
                 if (formatInputResult.bpm) params.bpm = formatInputResult.bpm;
                 if (formatInputResult.key_scale) params.key_scale = formatInputResult.key_scale;
