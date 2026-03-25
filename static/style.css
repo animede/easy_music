@@ -1232,6 +1232,174 @@ body::after {
     box-shadow: 0 0 12px var(--accent-glow);
 }
 
+/* ---------- Cover/Repaint Mode Toggle Buttons ---------- */
+.mode-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+.mode-toggle-btn:hover {
+    color: #fff;
+    border-color: rgba(124, 92, 252, 0.6);
+    background: linear-gradient(135deg, rgba(124, 92, 252, 0.25), rgba(244, 114, 182, 0.18));
+}
+.mode-toggle-btn.active {
+    color: #fff;
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(124, 92, 252, 0.2));
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Cover/Repaintモード時: 通常セクション非表示 */
+.cover-active .normal-mode-section,
+.repaint-active .normal-mode-section {
+    display: none !important;
+}
+/* Cover/Repaintモード時: ジャンルタイルも非表示 */
+.cover-active .genre-grid,
+.repaint-active .genre-grid,
+.cover-active #genre-section-label,
+.repaint-active #genre-section-label {
+    display: none !important;
+}
+
+/* Cover/Repaintモード専用セクション */
+.cover-mode-section,
+.repaint-mode-section {
+    display: none;
+}
+.cover-active .cover-mode-section {
+    display: block;
+}
+.repaint-active .repaint-mode-section {
+    display: block;
+}
+
+/* ---------- Upload Area ---------- */
+.upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background: var(--bg-elevated);
+    margin-bottom: 12px;
+    position: relative;
+}
+.upload-area:hover,
+.upload-area.drag-over {
+    border-color: var(--primary);
+    background: rgba(124, 92, 252, 0.08);
+}
+.upload-placeholder {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.file-input-hidden {
+    display: none;
+}
+.upload-file-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+.upload-clear-btn {
+    background: rgba(255,80,80,0.2);
+    border: 1px solid rgba(255,80,80,0.4);
+    color: #ff6b6b;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background var(--transition-fast);
+}
+.upload-clear-btn:hover {
+    background: rgba(255,80,80,0.4);
+}
+
+/* ---------- Cover Controls ---------- */
+.cover-controls,
+.repaint-controls {
+    margin-bottom: 10px;
+}
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.cover-slider {
+    flex: 1;
+    accent-color: var(--primary);
+    height: 6px;
+}
+.slider-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary);
+    min-width: 2.5em;
+    text-align: right;
+}
+.slider-hint {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 3px;
+}
+.cover-caption-row,
+.repaint-caption-row {
+    margin-bottom: 8px;
+}
+.cover-textarea,
+.repaint-textarea {
+    min-height: 60px;
+}
+
+/* ---------- Repaint Range ---------- */
+.repaint-range-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.repaint-time-input {
+    width: 72px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    text-align: center;
+}
+.repaint-time-input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+.range-separator {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.range-unit {
+    color: var(--text-dim);
+    font-size: 0.82rem;
+}
+
 /* JUKEBOXモード: 通常セクション非表示 */
 .jukebox-active .normal-mode-section {
     display: none !important;
@@ -1612,5 +1780,18 @@ body::after {
     }
     .history-item {
         padding: 6px 8px;
+    }
+    .mode-toggle-btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+    .mode-toggle-btn span {
+        display: none;
+    }
+    .upload-area {
+        padding: 16px 12px;
+    }
+    .repaint-time-input {
+        width: 56px;
     }
 }

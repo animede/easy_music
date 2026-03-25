@@ -147,6 +147,27 @@ const I18N = {
         status_random_loading: '🎲 ランダムサンプルを取得中...',
         status_random_filled: '🎲 ランダムパラメータをセットしました',
         status_random_fail: '⚠️ ランダムサンプルの取得に失敗しました',
+        // Cover / Repaint
+        btn_cover_mode: 'カバー',
+        btn_repaint_mode: 'リペイント',
+        label_cover_title: '🎤 カバーモード — 音声ファイルのスタイルを変換',
+        label_repaint_title: '🎨 リペイントモード — 音楽の一部を再生成',
+        label_upload_audio: '🎵 音声ファイルをドラッグ＆ドロップ、またはクリックして選択',
+        label_cover_strength: 'カバー強度',
+        hint_cover_strength: '低い値=原曲に忠実 / 高い値=大きく変換',
+        placeholder_cover_caption: '変換後のスタイル（例: jazz, acoustic, lo-fi）',
+        label_cover_lyrics: '歌詞（任意）',
+        placeholder_cover_lyrics: '新しい歌詞を入力（空欄なら原曲の構造を維持）',
+        label_repaint_range: '再生成区間（秒）',
+        hint_repaint_range: '指定区間のみ再生成し、それ以外はそのまま',
+        label_seconds: '秒',
+        placeholder_repaint_caption: '再生成部分のスタイル指定（任意）',
+        label_repaint_lyrics: '歌詞（任意）',
+        placeholder_repaint_lyrics: '再生成部分の歌詞（空欄ならAIが判断）',
+        status_cover_generating: '🎤 カバー生成中…',
+        status_repaint_generating: '🎨 リペイント生成中…',
+        status_no_audio_file: '⚠️ 音声ファイルを選択してください',
+        status_repaint_range_error: '⚠️ リペイント区間を正しく指定してください（終了 > 開始）',
         // History
         history_title: '履歴',
         history_empty: '生成履歴はまだありません',
@@ -288,6 +309,27 @@ const I18N = {
         status_random_loading: '🎲 Loading random sample...',
         status_random_filled: '🎲 Random parameters set',
         status_random_fail: '⚠️ Failed to load random sample',
+        // Cover / Repaint
+        btn_cover_mode: 'Cover',
+        btn_repaint_mode: 'Repaint',
+        label_cover_title: '🎤 Cover Mode — Transform audio style',
+        label_repaint_title: '🎨 Repaint Mode — Regenerate part of audio',
+        label_upload_audio: '🎵 Drag & drop an audio file, or click to select',
+        label_cover_strength: 'Cover Strength',
+        hint_cover_strength: 'Lower = faithful to original / Higher = greater transformation',
+        placeholder_cover_caption: 'Target style (e.g. jazz, acoustic, lo-fi)',
+        label_cover_lyrics: 'Lyrics (optional)',
+        placeholder_cover_lyrics: 'New lyrics (leave blank to preserve original structure)',
+        label_repaint_range: 'Regeneration Range (sec)',
+        hint_repaint_range: 'Only the specified range is regenerated; the rest stays intact',
+        label_seconds: 'sec',
+        placeholder_repaint_caption: 'Style for regenerated section (optional)',
+        label_repaint_lyrics: 'Lyrics (optional)',
+        placeholder_repaint_lyrics: 'Lyrics for regenerated section (AI decides if blank)',
+        status_cover_generating: '🎤 Generating cover…',
+        status_repaint_generating: '🎨 Generating repaint…',
+        status_no_audio_file: '⚠️ Please select an audio file',
+        status_repaint_range_error: '⚠️ Please set a valid repaint range (end > start)',
         // History
         history_title: 'History',
         history_empty: 'No generation history yet',
@@ -835,6 +877,316 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =============================================================================
+// Cover / Repaint Mode
+// =============================================================================
+
+let coverMode = false;
+let repaintMode = false;
+let coverFile = null;
+let repaintFile = null;
+
+/**
+ * カバーモード切替
+ */
+function toggleCoverMode() {
+    if (jukeboxRunning) return;
+    const container = document.querySelector('.simple-container');
+    const btn = document.getElementById('cover-toggle-btn');
+
+    if (coverMode) {
+        // カバーモードOFF
+        coverMode = false;
+        container.classList.remove('cover-active');
+        btn.classList.remove('active');
+    } else {
+        // 他モードをOFF → カバーモードON
+        if (repaintMode) toggleRepaintMode();
+        if (jukeboxMode) toggleJukeboxMode();
+        coverMode = true;
+        container.classList.add('cover-active');
+        btn.classList.add('active');
+    }
+}
+
+/**
+ * リペイントモード切替
+ */
+function toggleRepaintMode() {
+    if (jukeboxRunning) return;
+    const container = document.querySelector('.simple-container');
+    const btn = document.getElementById('repaint-toggle-btn');
+
+    if (repaintMode) {
+        repaintMode = false;
+        container.classList.remove('repaint-active');
+        btn.classList.remove('active');
+    } else {
+        if (coverMode) toggleCoverMode();
+        if (jukeboxMode) toggleJukeboxMode();
+        repaintMode = true;
+        container.classList.add('repaint-active');
+        btn.classList.add('active');
+    }
+}
+
+// ---- File Upload Handling ----
+
+function setupUploadArea(areaId, inputId, placeholderId, fileInfoId, fileNameId, fileSetter) {
+    const area = document.getElementById(areaId);
+    const input = document.getElementById(inputId);
+    const placeholder = document.getElementById(placeholderId);
+    const fileInfo = document.getElementById(fileInfoId);
+    const fileName = document.getElementById(fileNameId);
+    if (!area || !input) return;
+
+    area.addEventListener('click', () => input.click());
+    area.addEventListener('dragover', (e) => { e.preventDefault(); area.classList.add('drag-over'); });
+    area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+    area.addEventListener('drop', (e) => {
+        e.preventDefault();
+        area.classList.remove('drag-over');
+        if (e.dataTransfer.files.length > 0) {
+            fileSetter(e.dataTransfer.files[0]);
+            showFileInfo(placeholder, fileInfo, fileName, e.dataTransfer.files[0].name);
+        }
+    });
+    input.addEventListener('change', () => {
+        if (input.files.length > 0) {
+            fileSetter(input.files[0]);
+            showFileInfo(placeholder, fileInfo, fileName, input.files[0].name);
+        }
+    });
+}
+
+function showFileInfo(placeholder, fileInfo, fileName, name) {
+    placeholder.style.display = 'none';
+    fileInfo.style.display = 'flex';
+    fileName.textContent = '📎 ' + name;
+}
+
+function clearCoverFile() {
+    coverFile = null;
+    document.getElementById('cover-file-input').value = '';
+    document.getElementById('cover-upload-placeholder').style.display = '';
+    document.getElementById('cover-file-info').style.display = 'none';
+}
+
+function clearRepaintFile() {
+    repaintFile = null;
+    document.getElementById('repaint-file-input').value = '';
+    document.getElementById('repaint-upload-placeholder').style.display = '';
+    document.getElementById('repaint-file-info').style.display = 'none';
+}
+
+// Cover strength slider value display
+document.addEventListener('DOMContentLoaded', () => {
+    const slider = document.getElementById('cover-strength');
+    const display = document.getElementById('cover-strength-value');
+    if (slider && display) {
+        slider.addEventListener('input', () => {
+            display.textContent = (slider.value / 100).toFixed(2);
+        });
+    }
+    // Setup upload areas
+    setupUploadArea('cover-upload-area', 'cover-file-input', 'cover-upload-placeholder', 'cover-file-info', 'cover-file-name', (f) => { coverFile = f; });
+    setupUploadArea('repaint-upload-area', 'repaint-file-input', 'repaint-upload-placeholder', 'repaint-file-info', 'repaint-file-name', (f) => { repaintFile = f; });
+});
+
+/**
+ * カバー生成
+ */
+async function generateCover() {
+    if (!coverFile) {
+        showSimpleStatus(t('status_no_audio_file'), 'error');
+        return;
+    }
+    const btn = document.getElementById('simple-generate-btn');
+    btn.disabled = true;
+    btn.innerHTML = t('btn_generating');
+    hideSimpleStatus();
+    showSimpleStatus(t('status_cover_generating'), 'info');
+
+    try {
+        const formData = new FormData();
+        formData.append('src_audio', coverFile);
+        formData.append('prompt', sanitizeCaption(document.getElementById('cover-caption').value.trim()));
+        formData.append('lyrics', document.getElementById('cover-lyrics').value.trim());
+        formData.append('thinking', 'true');
+        formData.append('vocal_language', getSelectedLanguage());
+        formData.append('audio_duration', String(getSelectedDuration()));
+        formData.append('batch_size', String(getBatchSize()));
+        formData.append('audio_format', 'mp3');
+        formData.append('inference_steps', String(getSteps()));
+        const aceModel = getAceModel();
+        formData.append('guidance_scale', aceModel === 'acestep-v15-base' ? '7.0' : '3.0');
+        formData.append('audio_cover_strength', (document.getElementById('cover-strength').value / 100).toFixed(2));
+        if (aceModel) formData.append('model', aceModel);
+        const neg = getNegativePrompt() || DEFAULT_NEGATIVE_PROMPT;
+        formData.append('lm_negative_prompt', neg);
+        const s = getShift();
+        if (s !== null) formData.append('shift', String(s));
+        const im = getInferMethod();
+        if (im) formData.append('infer_method', im);
+        const isInst = document.getElementById('simple-inst').checked;
+        if (isInst) formData.append('instrumental', 'true');
+
+        showSimpleProgress(5, t('status_task_create'));
+        const resp = await fetch('/api/generate_cover', { method: 'POST', body: formData });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const createResult = await resp.json();
+        const taskId = createResult.task_id;
+        if (!taskId) throw new Error(t('status_task_fail'));
+
+        updateDebugPanel({
+            genre: '🎤 Cover',
+            theme: coverFile.name,
+            mode: 'Cover / strength=' + (document.getElementById('cover-strength').value / 100).toFixed(2),
+            tags: '—',
+            caption: document.getElementById('cover-caption').value.trim() || '(auto)',
+            lang: getSelectedLanguageName(),
+            params: 'model=' + (aceModel || 'turbo') + ' / steps=' + getSteps() + ' / cover'
+        });
+
+        addHistoryEntry({ task_id: taskId, genre: '🎤 Cover', caption: coverFile.name.substring(0, 60), duration: getSelectedDuration() });
+        if (createResult.seed != null) window._lastSeed = createResult.seed;
+
+        await pollTask(taskId);
+    } catch (e) {
+        console.error('[EasyMusic] Cover generation failed:', e);
+        showSimpleStatus('❌ Cover: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span data-i18n="btn_generate">' + t('btn_generate') + '</span>';
+    }
+}
+
+/**
+ * リペイント生成
+ */
+async function generateRepaint() {
+    if (!repaintFile) {
+        showSimpleStatus(t('status_no_audio_file'), 'error');
+        return;
+    }
+    const start = parseFloat(document.getElementById('repaint-start').value) || 0;
+    const end = parseFloat(document.getElementById('repaint-end').value) || 0;
+    if (end <= start) {
+        showSimpleStatus(t('status_repaint_range_error'), 'error');
+        return;
+    }
+
+    const btn = document.getElementById('simple-generate-btn');
+    btn.disabled = true;
+    btn.innerHTML = t('btn_generating');
+    hideSimpleStatus();
+    showSimpleStatus(t('status_repaint_generating'), 'info');
+
+    try {
+        const formData = new FormData();
+        formData.append('src_audio', repaintFile);
+        formData.append('repainting_start', String(start));
+        formData.append('repainting_end', String(end));
+        formData.append('prompt', sanitizeCaption(document.getElementById('repaint-caption').value.trim()));
+        formData.append('lyrics', document.getElementById('repaint-lyrics').value.trim());
+        formData.append('thinking', 'true');
+        formData.append('vocal_language', getSelectedLanguage());
+        formData.append('audio_duration', String(getSelectedDuration()));
+        formData.append('batch_size', String(getBatchSize()));
+        formData.append('audio_format', 'mp3');
+        formData.append('inference_steps', String(getSteps()));
+        const aceModel = getAceModel();
+        formData.append('guidance_scale', aceModel === 'acestep-v15-base' ? '7.0' : '3.0');
+        if (aceModel) formData.append('model', aceModel);
+        const neg = getNegativePrompt() || DEFAULT_NEGATIVE_PROMPT;
+        formData.append('lm_negative_prompt', neg);
+        const s = getShift();
+        if (s !== null) formData.append('shift', String(s));
+        const im = getInferMethod();
+        if (im) formData.append('infer_method', im);
+
+        showSimpleProgress(5, t('status_task_create'));
+        const resp = await fetch('/api/generate_repaint', { method: 'POST', body: formData });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const createResult = await resp.json();
+        const taskId = createResult.task_id;
+        if (!taskId) throw new Error(t('status_task_fail'));
+
+        updateDebugPanel({
+            genre: '🎨 Repaint',
+            theme: repaintFile.name,
+            mode: 'Repaint / range=' + start.toFixed(1) + 's ~ ' + end.toFixed(1) + 's',
+            tags: '—',
+            caption: document.getElementById('repaint-caption').value.trim() || '(auto)',
+            lang: getSelectedLanguageName(),
+            params: 'model=' + (aceModel || 'turbo') + ' / steps=' + getSteps() + ' / repaint'
+        });
+
+        addHistoryEntry({ task_id: taskId, genre: '🎨 Repaint', caption: repaintFile.name.substring(0, 60), duration: getSelectedDuration() });
+        if (createResult.seed != null) window._lastSeed = createResult.seed;
+
+        await pollTask(taskId);
+    } catch (e) {
+        console.error('[EasyMusic] Repaint generation failed:', e);
+        showSimpleStatus('❌ Repaint: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span data-i18n="btn_generate">' + t('btn_generate') + '</span>';
+    }
+}
+
+/**
+ * 共通ポーリング処理
+ */
+async function pollTask(taskId) {
+    const expectedTime = 120; // Cover/Repaintは推定時間をデフォルト2分
+    const startTime = Date.now();
+    let pollCount = 0;
+    const maxPolls = 600;
+
+    while (pollCount < maxPolls) {
+        await new Promise(r => setTimeout(r, 1000));
+        pollCount++;
+
+        const elapsed = (Date.now() - startTime) / 1000;
+        const progress = smoothProgress(elapsed, expectedTime);
+        showSimpleProgress(progress, t('status_generating') + ` (${Math.floor(elapsed)}s)`);
+
+        let statusResult;
+        try {
+            statusResult = await apiRequest('/api/status/' + taskId);
+        } catch (_) { continue; }
+
+        if (statusResult.status === 1) {
+            showSimpleProgress(100);
+            if (statusResult.results && statusResult.results.length > 0) {
+                const audioUrls = statusResult.results.map(r => convertAudioUrl(r.url));
+                updateHistoryEntry(taskId, audioUrls);
+                if (statusResult.results[0].seed != null) window._lastSeed = statusResult.results[0].seed;
+
+                // 無音チェック
+                const silent = await isSilentAudio(audioUrls[0]);
+                if (silent) {
+                    showSimpleStatus(t('status_silent'), 'error');
+                    removeHistoryEntry(taskId);
+                    hideSimpleProgress();
+                    return;
+                }
+
+                currentResults = statusResult.results;
+                currentLyrics = '';
+                showInlinePlayer();
+                playSimpleTrack(0);
+                showSimpleStatus(`✅ ${statusResult.results.length}${t('status_complete')}`, 'success');
+            }
+            return;
+        } else if (statusResult.status === -1) {
+            throw new Error(statusResult.error || t('status_fail'));
+        }
+    }
+    throw new Error('Timeout');
+}
+
+// =============================================================================
 // Omakase (Quick Generate) — sample_query mode
 // =============================================================================
 
@@ -1028,6 +1380,10 @@ function clearAutoLyrics() {
 // =============================================================================
 
 async function generateSimple() {
+    // ---- Cover/Repaint モード判定 ----
+    if (coverMode) return generateCover();
+    if (repaintMode) return generateRepaint();
+
     // ---- おまかせ生成モード判定 ----
     const omakaseInput = document.getElementById('omakase-input');
     const omakaseQuery = omakaseInput ? omakaseInput.value.trim() : '';
@@ -2238,6 +2594,9 @@ function toggleJukeboxMode() {
     const genreLabel = document.getElementById('genre-section-label');
 
     if (jukeboxMode) {
+        // 他モードをOFF
+        if (coverMode) toggleCoverMode();
+        if (repaintMode) toggleRepaintMode();
         container.classList.add('jukebox-active');
         btn.classList.add('active');
         btn.textContent = t('jukebox_btn_on');

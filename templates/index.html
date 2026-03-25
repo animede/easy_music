@@ -6,7 +6,7 @@
     <title>Easy Music — AI音楽生成</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="/static/style.css?v=20260317b">
+    <link rel="stylesheet" href="/static/style.css?v=20260325a">
 </head>
 <body>
     <div class="simple-container">
@@ -16,6 +16,8 @@
                 <h1>🎵 Easy Music</h1>
             </div>
             <div class="header-buttons">
+                <button class="mode-toggle-btn" id="cover-toggle-btn" onclick="toggleCoverMode()" title="Cover">🎤 <span data-i18n="btn_cover_mode">カバー</span></button>
+                <button class="mode-toggle-btn" id="repaint-toggle-btn" onclick="toggleRepaintMode()" title="Repaint">🎨 <span data-i18n="btn_repaint_mode">リペイント</span></button>
                 <button class="jukebox-toggle-btn" id="jukebox-toggle-btn" onclick="toggleJukeboxMode()" title="JUKEBOX">🎶 自動演奏</button>
                 <button class="lang-toggle-btn" id="lang-toggle-btn" onclick="toggleUILang()" title="日本語 / English">🌐 EN</button>
             </div>
@@ -137,6 +139,76 @@
                 <option value="" data-i18n="blend_none">（なし）</option>
             </select>
         </div>
+
+        <!-- ===== カバーモード パネル ===== -->
+        <section class="simple-section cover-mode-section" id="cover-panel">
+            <label class="section-label" data-i18n="label_cover_title">🎤 カバーモード — 音声ファイルのスタイルを変換</label>
+            <div class="upload-area" id="cover-upload-area">
+                <input type="file" id="cover-file-input" accept="audio/*" class="file-input-hidden">
+                <div class="upload-placeholder" id="cover-upload-placeholder" data-i18n="label_upload_audio">🎵 音声ファイルをドラッグ＆ドロップ、またはクリックして選択</div>
+                <div class="upload-file-info" id="cover-file-info" style="display:none">
+                    <span id="cover-file-name"></span>
+                    <button class="upload-clear-btn" onclick="clearCoverFile()">✕</button>
+                </div>
+            </div>
+            <div class="cover-controls">
+                <div class="control-item">
+                    <label data-i18n="label_cover_strength">カバー強度</label>
+                    <div class="slider-row">
+                        <input type="range" id="cover-strength" class="cover-slider" min="0" max="100" value="80">
+                        <span class="slider-value" id="cover-strength-value">0.80</span>
+                    </div>
+                    <div class="slider-hint" data-i18n="hint_cover_strength">低い値=原曲に忠実 / 高い値=大きく変換</div>
+                </div>
+            </div>
+            <div class="cover-caption-row">
+                <input type="text" id="cover-caption" class="simple-input"
+                       data-i18n-placeholder="placeholder_cover_caption"
+                       placeholder="変換後のスタイル（例: jazz, acoustic, lo-fi）">
+            </div>
+            <details class="collapsible-section">
+                <summary class="collapsible-summary" data-i18n="label_cover_lyrics">歌詞（任意）</summary>
+                <textarea id="cover-lyrics" class="simple-textarea cover-textarea"
+                          data-i18n-placeholder="placeholder_cover_lyrics"
+                          placeholder="新しい歌詞を入力（空欄なら原曲の構造を維持）"></textarea>
+            </details>
+        </section>
+
+        <!-- ===== リペイントモード パネル ===== -->
+        <section class="simple-section repaint-mode-section" id="repaint-panel">
+            <label class="section-label" data-i18n="label_repaint_title">🎨 リペイントモード — 音楽の一部を再生成</label>
+            <div class="upload-area" id="repaint-upload-area">
+                <input type="file" id="repaint-file-input" accept="audio/*" class="file-input-hidden">
+                <div class="upload-placeholder" id="repaint-upload-placeholder" data-i18n="label_upload_audio">🎵 音声ファイルをドラッグ＆ドロップ、またはクリックして選択</div>
+                <div class="upload-file-info" id="repaint-file-info" style="display:none">
+                    <span id="repaint-file-name"></span>
+                    <button class="upload-clear-btn" onclick="clearRepaintFile()">✕</button>
+                </div>
+            </div>
+            <div class="repaint-controls">
+                <div class="control-item">
+                    <label data-i18n="label_repaint_range">再生成区間（秒）</label>
+                    <div class="repaint-range-row">
+                        <input type="number" id="repaint-start" class="repaint-time-input" min="0" step="0.1" value="0" placeholder="開始">
+                        <span class="range-separator">〜</span>
+                        <input type="number" id="repaint-end" class="repaint-time-input" min="0" step="0.1" value="0" placeholder="終了">
+                        <span class="range-unit" data-i18n="label_seconds">秒</span>
+                    </div>
+                    <div class="slider-hint" data-i18n="hint_repaint_range">指定区間のみ再生成し、それ以外はそのまま</div>
+                </div>
+            </div>
+            <div class="repaint-caption-row">
+                <input type="text" id="repaint-caption" class="simple-input"
+                       data-i18n-placeholder="placeholder_repaint_caption"
+                       placeholder="再生成部分のスタイル指定（任意）">
+            </div>
+            <details class="collapsible-section">
+                <summary class="collapsible-summary" data-i18n="label_repaint_lyrics">歌詞（任意）</summary>
+                <textarea id="repaint-lyrics" class="simple-textarea repaint-textarea"
+                          data-i18n-placeholder="placeholder_repaint_lyrics"
+                          placeholder="再生成部分の歌詞（空欄ならAIが判断）"></textarea>
+            </details>
+        </section>
 
         <!-- おまかせ生成（Simple Mode） -->
         <section class="simple-section normal-mode-section omakase-section" id="omakase-section">
@@ -443,7 +515,7 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=20260318d"></script>
+    <script src="/static/app.js?v=20260325a"></script>
 
     <footer class="simple-footer">
         <p>Powered by <a href="https://github.com/ace-step/ACE-Step" target="_blank" rel="noopener">ACE-Step 1.5</a> &amp; ゆずき</p>
