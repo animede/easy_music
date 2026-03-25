@@ -594,7 +594,7 @@ function getBatchSize() {
 }
 
 function getSteps() {
-    return parseInt(document.getElementById('simple-steps')?.value || '50') || 50;
+    return parseInt(document.getElementById('simple-steps')?.value || '8') || 8;
 }
 
 function getAceModel() {
@@ -751,6 +751,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (captionEl) {
         captionEl.addEventListener('input', () => {
             window._captionUserEdited = true;
+        });
+    }
+    // モデル切替時にSTEPを自動切替 (Turbo→8, Base→50)
+    const aceModelSelect = document.getElementById('simple-ace-model');
+    if (aceModelSelect) {
+        aceModelSelect.addEventListener('change', () => {
+            const stepsEl = document.getElementById('simple-steps');
+            if (!stepsEl) return;
+            if (aceModelSelect.value === 'turbo') {
+                stepsEl.value = '8';
+            } else {
+                stepsEl.value = '50';
+            }
         });
     }
 });
