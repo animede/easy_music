@@ -55,6 +55,50 @@ pip install -r requirements.txt
 
 Open `http://localhost:8889` in your browser.
 
+### Starting the ACE-Step Server
+
+Easy Music connects to the ACE-Step 1.5 REST API server for music generation.  
+Two startup scripts are included in `ace_startup/` for different use cases.  
+Copy them to your ACE-Step 1.5 installation folder before use.
+
+```bash
+# Copy scripts to the ACE-Step folder
+cp ace_startup/run_api_server_*.sh /path/to/ACE-Step-1.5/
+```
+
+#### Multi-model (Recommended)
+
+Loads both Turbo and Base models simultaneously, allowing per-request switching.  
+The UI "Model" selector automatically routes to the correct model.
+
+```bash
+cd /path/to/ACE-Step-1.5
+./run_api_server_multimodel.sh
+```
+
+- Default: Turbo (fast); send `"model": "acestep-v15-base"` in request for Base
+- LM: 4B (high quality), backend: vllm
+- Recommended VRAM: 24GB
+
+#### Low-VRAM
+
+For VRAM-constrained environments. Loads a single model with CPU offloading enabled.  
+Per-request model switching is not available in this mode.
+
+```bash
+cd /path/to/ACE-Step-1.5
+./run_api_server_lowvram.sh
+
+# Start with Base model instead
+ACESTEP_CONFIG_PATH=acestep-v15-base ./run_api_server_lowvram.sh
+```
+
+- Default: Turbo only
+- LM: 1.7B (lightweight), CPU offload enabled
+- Best when sharing VRAM with other applications
+
+> See `ace_startup/起動コマンド.md` and `ace_startup/運用メモ_同時実行数とキュー.md` for details.
+
 ### Server Version (Multi-user)
 
 Works as-is for multiple simultaneous users.  
@@ -110,6 +154,7 @@ easy_music/
 │   ├── style.css           # Stylesheet
 │   └── image/              # Genre images
 ├── models/                 # GGUF models (auto-download)
+├── ace_startup/            # ACE-Step server startup scripts & docs
 └── docs/                   # Documentation
 ```
 

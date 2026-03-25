@@ -55,6 +55,50 @@ pip install -r requirements.txt
 
 ブラウザで `http://localhost:8889` にアクセス。
 
+### ACE-Step サーバーの起動
+
+Easy Music は ACE-Step 1.5 の REST API サーバーに接続して音楽を生成します。  
+用途に応じて2つの起動スクリプトを `ace_startup/` に同梱しています。  
+ACE-Step 1.5 のインストールフォルダにコピーして使用してください。
+
+```bash
+# ace_startup/ のスクリプトを ACE-Step フォルダにコピー
+cp ace_startup/run_api_server_*.sh /path/to/ACE-Step-1.5/
+```
+
+#### マルチモデル起動（推奨）
+
+Turbo と Base の両モデルを同時にロードし、リクエスト単位で切り替えられます。  
+UI の「モデル」セレクタで Turbo/Base を選択すると自動的に対応モデルが使用されます。
+
+```bash
+cd /path/to/ACE-Step-1.5
+./run_api_server_multimodel.sh
+```
+
+- デフォルト: Turbo（高速）、リクエストで `"model": "acestep-v15-base"` を送ると Base に切替
+- LM: 4B（高品質）、バックエンド: vllm
+- VRAM目安: 24GB 推奨
+
+#### Low-VRAM 起動
+
+VRAM が限られた環境向け。単一モデルのみロードし、CPU オフロードを有効化します。  
+このモードではリクエスト単位のモデル切替はできません。
+
+```bash
+cd /path/to/ACE-Step-1.5
+./run_api_server_lowvram.sh
+
+# Base モデルで起動する場合
+ACESTEP_CONFIG_PATH=acestep-v15-base ./run_api_server_lowvram.sh
+```
+
+- デフォルト: Turbo 単体
+- LM: 1.7B（軽量）、CPU オフロード有効
+- VRAM を他アプリと共有する場合に最適
+
+> 詳細は `ace_startup/起動コマンド.md` および `ace_startup/運用メモ_同時実行数とキュー.md` を参照してください。
+
 ### サーバ版（マルチユーザー対応）
 
 複数ユーザーが同時接続する環境でもそのまま使えます。  
@@ -112,6 +156,7 @@ easy_music/
 │   ├── style.css           # スタイルシート
 │   └── image/              # ジャンル画像
 ├── models/                 # GGUFモデル（自動ダウンロード）
+├── ace_startup/            # ACE-Stepサーバー起動スクリプト・ドキュメント
 └── docs/                   # ドキュメント
 ```
 
