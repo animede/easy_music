@@ -855,7 +855,7 @@ async function generateOmakase(query) {
             lyrics: '',
             thinking: true, // おまかせ生成はthinking=true推奨
             sample_query: query,
-            vocal_language: '',
+            vocal_language: getSelectedLanguage(), // UIの言語設定を反映
             audio_duration: getSelectedDuration(),
             batch_size: getBatchSize(),
             audio_format: 'mp3',
@@ -1001,13 +1001,8 @@ async function fillRandomSample() {
                 durEl.value = closest.value;
             }
         }
-        if (data.vocal_language) {
-            const langEl = document.getElementById('simple-language');
-            if (langEl) {
-                const opt = Array.from(langEl.options).find(o => o.value === data.vocal_language);
-                if (opt) langEl.value = data.vocal_language;
-            }
-        }
+        // 言語はユーザーの現在の選択を維持する（ランダムサンプルで上書きしない）
+        // if (data.vocal_language) { ... }
 
         showSimpleStatus(t('status_random_filled'), 'success');
     } catch (e) {
