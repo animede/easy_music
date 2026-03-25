@@ -8,11 +8,13 @@ Pick a genre, click generate — anyone can create music with AI!
 
 1. [What This App Does](#what-this-app-does)
 2. [How to Use](#how-to-use)
-3. [JUKEBOX Auto-Play Mode](#jukebox-auto-play-mode)
-4. [Settings Explained](#settings-explained)
-5. [Genre List & Characteristics](#genre-list--characteristics)
-6. [Tips for Better Music](#tips-for-better-music)
-7. [FAQ](#faq)
+3. [Quick Generate (Omakase)](#quick-generate-omakase)
+4. [JUKEBOX Auto-Play Mode](#jukebox-auto-play-mode)
+5. [Settings Explained](#settings-explained)
+6. [Advanced Settings](#advanced-settings)
+7. [Genre List & Characteristics](#genre-list--characteristics)
+8. [Tips for Better Music](#tips-for-better-music)
+9. [FAQ](#faq)
 
 ---
 
@@ -28,6 +30,10 @@ Easy Music uses the **ACE-Step 1.5** AI music generation engine to automatically
 - 🔊 **Inline Player** — With spectrum visualizer
 - 🌏 **13 Languages** — Japanese, English, Chinese, Korean, and more
 - 🎶 **JUKEBOX Auto-Play** — Select genres and enjoy endless AI-generated music, one track after another
+- 🪄 **Quick Generate** — Describe what you want in natural language and AI decides all parameters
+- 🚫 **Negative Prompt** — Specify elements to avoid for better quality
+- ⚙️ **Advanced Settings** — Shift, Sampler (ODE/SDE) and more for power users
+- 🔊 **Volume Control** — Volume slider + mute on all players
 
 ---
 
@@ -65,6 +71,16 @@ Memories of spending time with a lover at the summer beach
 An afternoon reading at a café on a rainy day
 ```
 
+#### 🚫 Negative Prompt
+
+Specify elements to avoid during generation — similar to negative prompts in image generation AI.
+
+- **If left blank**: A default is automatically applied → `low quality, noisy, distorted, muddy, clipping, off-key, out of tune, amateur, poorly mixed`
+- **Effect**: Suppresses noise, clipping, off-key, and poor mixing for overall quality improvement
+- **Customization**: Enter your own text to avoid specific instruments, tones, or styles
+
+> 💡 The default works well for most cases. Leave it blank unless you have a specific reason to change it.
+
 #### 🎵 Lyrics (AI auto-generates if blank)
 
 You can write your own lyrics. **If left blank, AI will auto-generate** them. Use the **♻️ Regenerate** button to clear and re-generate with AI.
@@ -83,6 +99,26 @@ Click the "🎵 Generate Music" button and let the AI do the rest!
 ### Step 4: Play
 
 Once complete, a player appears. Enjoy your music with the spectrum visualizer!
+
+🔊 **Volume**: Use the slider next to the speaker icon to adjust volume. Click the icon to mute/unmute. Your volume setting is saved in the browser and restored on next visit.
+
+---
+
+## 🪄 Quick Generate (Omakase)
+
+Just type something like "a refreshing pop song for a summer beach" and the AI **automatically determines all parameters** — genre, caption, lyrics, BPM, key, and more — to generate music.
+
+### How to Use
+
+1. Enter text in the input field above the genre tiles
+2. Press the "🎵 Generate Music" button
+3. AI decides everything and starts generating
+
+### 🎲 Random Button
+
+Press the **🎲** button next to the input field to auto-fill the form with random caption, lyrics, and settings. Great when you just want to hear something new.
+
+> 💡 Quick Generate uses ACE-Step's `sample_query` API. Compared to selecting a genre tile, the LM generates everything internally, resulting in more coherent output.
 
 ---
 
@@ -145,11 +181,14 @@ Pressing **■ STOP** immediately stops the current track and ends JUKEBOX. The 
 
 | Value | Use Case |
 |-------|----------|
+| **Auto** | LM auto-estimates optimal length from lyrics (**recommended**) |
 | 30s | Quick test / short clip |
 | 60s | Short version |
-| 120s | Standard length (recommended) |
+| 120s | Standard length |
 | 180s | Near full-length |
 | 240–300s | Extended tracks |
+
+> 💡 Since v1.5, the default is Auto. The optimal length is automatically selected based on lyrics length.
 
 ### Language
 
@@ -190,6 +229,47 @@ Balances generation quality vs. speed.
 ### Details Button
 
 Press "Details" to view the parameters used during generation (caption, lyrics, submission parameters).
+
+---
+
+## ⚙️ Advanced Settings
+
+Open the "Advanced Settings" accordion in the control bar to access these power-user parameters.
+
+### Shift (Timestep Shift)
+
+Controls the noise schedule of the flow matching (DiT) model. Lower values focus on detail; higher values focus on overall structure.
+
+| Value | Effect | Best for |
+|---|---|---|
+| **Auto** | Model-appropriate default (**recommended**) | Works well for most cases |
+| 1.0–2.0 | Detail stage focus → precise texture & tone | Instrument timbre, mixing finesse |
+| 3.0 | Semantics-oriented → structure follows prompt | Turbo default. Genre feel & mood |
+| 4.0–5.0 | Maximum semantics → strong melody/rhythm control | When clear composition is needed |
+
+> 💡 **Turbo model**: Default 3.0. **Base model**: 1.0–2.0 recommended.
+
+### Sampler (Inference Sampler)
+
+Choose the sampling method for music generation.
+
+| | ODE (recommended) | SDE |
+|---|---|---|
+| **Method** | Deterministic sampling | Stochastic sampling (noise re-injection) |
+| **Reproducibility** | Identical with same seed | Slightly varies even with same seed |
+| **Sound character** | Clean, orderly | Organic, human-like fluctuation |
+| **Stability** | Always stable | Noise risk at low steps (8) |
+| **Recommended** | Turbo (8 steps) | Base (50+ steps) |
+
+> 💡 **Beginners should keep ODE (default)**. SDE with Base model + 50+ steps gives organic, lively textures.
+
+### Volume Control
+
+All players (inline, overlay, JUKEBOX) have a speaker icon and volume slider.
+
+- 🔊 **Click speaker icon**: Mute / unmute
+- **Slider**: Adjust volume from 0–100%
+- **Persistent**: Volume is saved in localStorage and restored on next visit
 
 ---
 
