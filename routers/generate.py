@@ -71,7 +71,7 @@ class GenerateRequest(BaseModel):
     thinking: bool = Field(default=True, description="LMで高品質生成")
     model: Optional[str] = Field(default=None, description="モデル名（省略時はサーバーデフォルト）")
     vocal_language: str = Field(default="ja", description="歌詞言語")
-    audio_duration: int = Field(default=60, ge=10, le=300, description="生成時間（秒）")
+    audio_duration: int = Field(default=60, ge=-1, le=300, description="生成時間（秒） -1でLM自動推定")
     bpm: Optional[int] = Field(default=None, ge=30, le=300, description="テンポ")
     key_scale: Optional[str] = Field(default=None, description="調")
     time_signature: str = Field(default="4", description="拍子")
@@ -79,6 +79,7 @@ class GenerateRequest(BaseModel):
     audio_format: str = Field(default="mp3", description="出力形式")
     seed: Optional[int] = Field(default=None, description="シード値")
     inference_steps: int = Field(default=150, ge=1, le=200, description="推論ステップ数")
+    instrumental: bool = Field(default=False, description="インストゥルメンタルモード")
     guidance_scale: float = Field(default=3.0, ge=0.0, le=20.0, description="CFGスケール")
     # LM パラメータ
     lm_temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0, description="LM温度")
@@ -152,6 +153,8 @@ async def generate_music(request: GenerateRequest):
             extra_params["use_cot_caption"] = request.use_cot_caption
         if request.use_cot_language is not None:
             extra_params["use_cot_language"] = request.use_cot_language
+        if request.instrumental:
+            extra_params["instrumental"] = True
 
         # seedが未指定の場合はランダム生成して追跡できるようにする
         import random

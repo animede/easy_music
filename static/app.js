@@ -31,6 +31,7 @@ const I18N = {
         placeholder_theme: '例: 夜空を見上げて願いを込める魔法少女の物語',
         placeholder_lyrics: '[verse]\n星の海に浮かぶ願いが\n夜空を駆け巡る\n\n[chorus]\n輝く未来へ...',
         // Duration options
+        dur_auto: '自動（AI推定）',
         dur_30: '30秒', dur_45: '45秒', dur_60: '60秒', dur_90: '90秒',
         dur_120: '120秒', dur_180: '180秒', dur_240: '240秒', dur_300: '300秒',
         // Genre labels (Japanese unique)
@@ -157,6 +158,7 @@ const I18N = {
         overlay_hint: 'Tap to close',
         placeholder_theme: 'e.g. A magical girl gazing at the night sky, making a wish',
         placeholder_lyrics: '[verse]\nWishes floating in a sea of stars\nRacing across the night sky\n\n[chorus]\nToward a shining future...',
+        dur_auto: 'Auto (AI estimate)',
         dur_30: '30s', dur_45: '45s', dur_60: '60s', dur_90: '90s',
         dur_120: '120s', dur_180: '180s', dur_240: '240s', dur_300: '300s',
         genre_70s: "70's Kayokyoku", genre_80s: "80's Folk", genre_90s: "90's J-POP",
@@ -520,7 +522,7 @@ function convertAudioUrl(url) {
 
 function estimateGenerationTime(params) {
     const steps = params.inference_steps || 150;
-    const duration = params.audio_duration || 60;
+    const duration = params.audio_duration > 0 ? params.audio_duration : 120; // 自動推定時は120秒想定
     const batch = params.batch_size || 1;
     const thinking = params.thinking !== false;
     const isBase = params.model === 'acestep-v15-base';
@@ -728,7 +730,9 @@ function initGenreGrid() {
 // =============================================================================
 
 function getSelectedDuration() {
-    return parseInt(document.getElementById('simple-duration').value) || 120;
+    const val = document.getElementById('simple-duration').value;
+    if (val === 'auto') return -1; // LMが歌詞長から最適な長さを自動推定
+    return parseInt(val) || 120;
 }
 
 function getSelectedLanguage() {
@@ -1032,11 +1036,12 @@ async function generateSimple() {
             batch_size: getBatchSize(),
             audio_format: 'mp3',
             inference_steps: getSteps(), // ユーザー設定値
-            guidance_scale: isInst ? 18.0 : 18.0, // プロンプト忠実度を上げてクリアな音質に
+            guidance_scale: aceModel === 'acestep-v15-base' ? 7.0 : 3.0, // Turbo: CFG不要(蒸留済), Base: 5-9推奨
             // CoT（Chain-of-Thought）による品質強化
             use_cot_caption: true,
             use_cot_language: true,
         };
+        if (isInst) params.instrumental = true;
         if (aceModel) params.model = aceModel;
 
         // format_input で得たBPM・調を反映（AI推奨パラメータ）
@@ -1070,7 +1075,7 @@ async function generateSimple() {
             tags: rawTags || t('mode_no_tags'),
             caption: params.prompt,
             lang: selectedLangName + ' (' + selectedLangCode + ')' + (isInst ? ' → instrumental' : ''),
-            params: (params.model ? 'model=' + params.model + ' / ' : 'model=turbo / ') + 'steps=' + params.inference_steps + ' / guidance=' + params.guidance_scale + ' / duration=' + params.audio_duration + 's / thinking=' + params.thinking + ' / cot_caption=true / cot_lang=true' + (params.bpm ? ' / bpm=' + params.bpm : '') + (params.key_scale ? ' / key=' + params.key_scale : '') + (params.seed != null ? ' / seed=' + params.seed : '')
+            params: (params.model ? 'model=' + params.model + ' / ' : 'model=turbo / ') + 'steps=' + params.inference_steps + ' / guidance=' + params.guidance_scale + ' / duration=' + (params.audio_duration === -1 ? 'auto' : params.audio_duration + 's') + ' / thinking=' + params.thinking + (params.instrumental ? ' / instrumental' : '') + ' / cot_caption=true / cot_lang=true' + (params.bpm ? ' / bpm=' + params.bpm : '') + (params.key_scale ? ' / key=' + params.key_scale : '') + (params.seed != null ? ' / seed=' + params.seed : '')
         });
 
         const createResult = await apiRequest('/api/generate', 'POST', params);
