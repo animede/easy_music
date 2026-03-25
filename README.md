@@ -1,4 +1,4 @@
-# Easy Music v1.5 — AI音楽生成アプリ
+# Easy Music v1.6 — AI音楽生成アプリ
 
 ジャンルを選んでワンクリックで音楽を生成するWebアプリケーション。  
 [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) を音楽生成エンジンとして使用します。
@@ -18,7 +18,7 @@
 - 📋 **履歴機能** — 直近10件の生成音楽をリスト表示、選択再生・ダウンロード（ブラウザsessionStorage）
 - 🌐 **日英切替** — ワンクリックでUI言語切替
 
-## v1.5 新機能
+## v1.6 新機能
 
 ### 🪄 おまかせ生成 (Quick Generate)
 

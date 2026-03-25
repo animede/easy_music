@@ -188,7 +188,7 @@ Pressing **■ STOP** immediately stops the current track and ends JUKEBOX. The 
 | 180s | Near full-length |
 | 240–300s | Extended tracks |
 
-> 💡 Since v1.5, the default is Auto. The optimal length is automatically selected based on lyrics length.
+> 💡 Since v1.6, the default is Auto. The optimal length is automatically selected based on lyrics length.
 
 ### Language
 
