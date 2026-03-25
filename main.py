@@ -112,10 +112,10 @@ app.include_router(lyrics.router)
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """メインページ"""
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "title": "Easy Music — AI音楽生成"
-    })
+    return templates.TemplateResponse(
+        request, "index.html",
+        {"title": "Easy Music — AI音楽生成"}
+    )
 
 
 @app.get("/api")
