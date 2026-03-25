@@ -1,4 +1,4 @@
-# Easy Music v1.4 — AI Music Generator
+# Easy Music v1.5 — AI Music Generator
 
 A web application that generates music with one click by selecting a genre.  
 Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generation engine.
@@ -17,6 +17,70 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 - 🔇 **Silent Audio Detection** — Analyzes RMS/peak via Web Audio API, auto-detects silent output
 - 📋 **History** — Recent 10 generations in a list with playback and download (browser sessionStorage)
 - 🌐 **Bilingual UI** — Japanese / English toggle
+
+## v1.5 New Features
+
+### 🪄 Quick Generate (Omakase)
+
+Just type something like "a refreshing pop song for a summer beach" and the AI automatically determines all parameters — genre, caption, lyrics, BPM, key, and more — to generate music.
+
+- **How to use**: Enter text in the input field above the genre tiles and press the generate button
+- **🎲 Random button**: Fills the form with a random caption, lyrics, and settings
+- Uses ACE-Step's `sample_query` API; the LM generates everything internally
+
+### 🚫 Negative Prompt (lm_negative_prompt)
+
+Specify elements to avoid during generation, similar to negative prompts in image generation AI.
+
+- **Default** (applied when empty): `low quality, noisy, distorted, muddy, clipping, off-key, out of tune, amateur, poorly mixed`
+- **Effect**: Suppresses noise, clipping, off-key, and poor mixing for overall quality improvement
+- **Customization**: Free text entry in the "Negative Prompt" field inside the Lyrics Settings accordion
+
+### ⚙️ Advanced Settings (Accordion)
+
+The control bar is split into "Basic" (always visible) and "Advanced" (collapsible) sections, keeping the UI clean for beginners while giving power users full control.
+
+**Basic** (always visible):
+- Duration / Language / Track count / Model / Instrumental
+
+**Advanced** (collapsible):
+
+| Parameter | Description | Recommended |
+|---|---|---|
+| **STEP** | Inference steps. More = higher quality but slower | Turbo: 8, Base: 50 |
+| **Shift** | Timestep shift. Lower = detail/texture focus, Higher = structure/prompt fidelity | Turbo: 3.0, Base: 1.0–2.0 |
+| **Sampler** | ODE = stable & reproducible, SDE = organic & diverse (needs higher steps) | ODE |
+| **Auto Caption** | Auto-generates optimal caption from genre info | ON |
+| **Thinking** | LM Chain-of-Thought reasoning for quality improvement | ON |
+
+#### Shift Details
+
+Controls the noise schedule of the flow matching (DiT) model.
+
+| Value | Effect | Best for |
+|---|---|---|
+| 1.0–2.0 | Focuses on detail stage → precise texture & tone | Instrument timbre, mixing finesse |
+| 3.0 | Semantics-oriented → structure follows prompt | Turbo default. Genre feel & mood |
+| 4.0–5.0 | Maximum semantics → strong melody/rhythm control | When clear composition is needed |
+
+#### Sampler (ODE / SDE) Details
+
+| | ODE | SDE |
+|---|---|---|
+| Method | Deterministic sampling | Stochastic sampling (noise re-injection) |
+| Reproducibility | Identical with same seed | Slightly varies even with same seed |
+| Sound character | Clean, orderly | Organic, human-like fluctuation |
+| Caution | Always stable | Quality risk at low steps (8) |
+| Recommended | Turbo (8 steps) | Base (50+ steps) |
+
+### ⚡ Performance Optimizations
+
+- **use_cot_metas optimization**: When `format_input` already fetched BPM/Key, skips redundant metadata estimation during generation, saving **1–3 seconds**
+- **Duration Auto**: Default behavior lets the LM auto-estimate optimal song length from lyrics
+
+### 🔊 Volume Control
+
+All players (inline, overlay, JUKEBOX) feature a volume slider. Click the speaker icon to mute/unmute. Volume setting persists in localStorage across sessions.
 
 ## Setup
 
