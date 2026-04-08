@@ -111,8 +111,11 @@ const I18N = {
         label_batch: '曲数',
         batch_1: '1曲', batch_2: '2曲', batch_4: '4曲',
         label_ace_model: 'モデル',
-        ace_model_turbo: 'Turbo (高速)',
-        ace_model_base: 'Base (高品質)',
+        ace_model_turbo: 'TURBO (高速)',
+        ace_model_sft: 'SFT (高品質)',
+        ace_model_base: 'Base (標準)',
+        ace_model_loading: '読み込み中...',
+        ace_model_fallback: 'TURBO (デフォルト)',
         label_steps: 'STEP',
         label_thinking: 'Thinking',
         steps_8: '8 (Turbo)', steps_20: '20 (高速)', steps_50: '50 (標準)', steps_80: '80 (高品質)', steps_100: '100 (最高品質)',
@@ -273,8 +276,11 @@ const I18N = {
         label_batch: 'Count',
         batch_1: '1 track', batch_2: '2 tracks', batch_4: '4 tracks',
         label_ace_model: 'Model',
-        ace_model_turbo: 'Turbo (Fast)',
-        ace_model_base: 'Base (High Quality)',
+        ace_model_turbo: 'TURBO (Fast)',
+        ace_model_sft: 'SFT (High Quality)',
+        ace_model_base: 'Base (Standard)',
+        ace_model_loading: 'Loading...',
+        ace_model_fallback: 'TURBO (Default)',
         label_steps: 'STEP',
         label_thinking: 'Thinking',
         steps_8: '8 (Turbo)', steps_20: '20 (Fast)', steps_50: '50 (Standard)', steps_80: '80 (High Quality)', steps_100: '100 (Best Quality)',
@@ -379,6 +385,21 @@ function applyI18n() {
     }
     // Update page title
     document.title = currentUILang === 'ja' ? 'Easy Music — AI音楽生成' : 'Easy Music — AI Music Generator';
+    // 動的モデル選択肢のラベルを更新
+    refreshModelLabels();
+}
+
+/** モデルセレクトの表示ラベルを現在の言語で更新 */
+function refreshModelLabels() {
+    const sel = document.getElementById('simple-ace-model');
+    if (!sel) return;
+    Array.from(sel.options).forEach(opt => {
+        if (!opt.value) return; // loading placeholder
+        let label = getModelDisplayLabel(opt.value);
+        // 未ロードマーカーを保持
+        if (opt.textContent.endsWith(' ⏳')) label += ' ⏳';
+        opt.textContent = label;
+    });
 }
 
 /** Toggle UI language */
@@ -605,10 +626,10 @@ function estimateGenerationTime(params) {
     const duration = params.audio_duration > 0 ? params.audio_duration : 120; // 自動推定時は120秒想定
     const batch = params.batch_size || 1;
     const thinking = params.thinking !== false;
-    const isBase = params.model === 'acestep-v15-base';
+    const isSft = needsCfgModel(params.model);
     const lmTime = thinking ? 4 : 1.5;
-    // base モデルは turbo より遅い（ステップ数が同じでも約1.5倍）
-    const ditTime = steps * duration * (isBase ? 0.009 : 0.006);
+    // SFT/Base モデルは turbo より遅い（CFGあり・ステップ50）
+    const ditTime = steps * duration * (isSft ? 0.009 : 0.006);
     const batchFactor = 1 + (batch - 1) * 0.8;
     const overhead = 2;
     const estimated = (lmTime + ditTime * batchFactor + overhead) * 1.3;
@@ -680,9 +701,130 @@ function getSteps() {
 }
 
 function getAceModel() {
-    const val = document.getElementById('simple-ace-model')?.value || 'turbo';
-    // turbo=デフォルト(model指定なし), base=acestep-v15-base
-    return val === 'base' ? 'acestep-v15-base' : null;
+    const val = document.getElementById('simple-ace-model')?.value;
+    // select の value はフルモデル名（例: acestep-v15-xl-turbo）
+    return val || null;
+}
+
+// =============================================================================
+// Dynamic Model Loading — サーバーから利用可能モデルを取得して選択肢を構築
+// =============================================================================
+
+/** モデル名 → 表示ラベルのマッピング */
+function getModelDisplayLabel(modelName) {
+    const n = modelName.toLowerCase();
+    if (n.includes('xl-turbo')) return 'XL ' + t('ace_model_turbo');
+    if (n.includes('xl-sft'))   return 'XL ' + t('ace_model_sft');
+    if (n.includes('xl-base'))  return 'XL ' + t('ace_model_base');
+    if (n.includes('turbo'))    return t('ace_model_turbo');
+    if (n.includes('sft'))      return t('ace_model_sft');
+    if (n.includes('base'))     return t('ace_model_base');
+    return modelName;
+}
+
+/** モデルがCFGガイダンスが必要か（SFT/Base系: turbo以外） */
+function needsCfgModel(modelName) {
+    if (!modelName) return false;
+    const n = modelName.toLowerCase();
+    return n.includes('sft') || n.includes('base');
+}
+
+/** モデルがSFT系かどうか（バッチ制限用） */
+function isSftModel(modelName) {
+    return modelName && modelName.toLowerCase().includes('sft');
+}
+
+/** モデルがTurbo系かどうか */
+function isTurboModel(modelName) {
+    return modelName && modelName.toLowerCase().includes('turbo');
+}
+
+/**
+ * サーバーから利用可能モデルを取得し、<select> を動的に構築する。
+ * 起動時に1回呼ばれる。失敗時はフォールバックの静的選択肢を表示。
+ */
+async function loadAvailableModels() {
+    const sel = document.getElementById('simple-ace-model');
+    if (!sel) return;
+
+    try {
+        const result = await apiRequest('/api/models');
+        if (!result.success || !result.models || result.models.length === 0) {
+            throw new Error('No models returned');
+        }
+
+        const defaultModel = result.default_model || '';
+        sel.innerHTML = '';
+
+        // ロード済みモデルを優先表示、その後未ロードモデル
+        const sorted = [...result.models].sort((a, b) => {
+            // is_loaded を優先（未定義はロード済み扱い）
+            const aLoaded = a.is_loaded !== false;
+            const bLoaded = b.is_loaded !== false;
+            if (aLoaded && !bLoaded) return -1;
+            if (!aLoaded && bLoaded) return 1;
+            // turbo を先に
+            if (isTurboModel(a.name) && !isTurboModel(b.name)) return -1;
+            if (!isTurboModel(a.name) && isTurboModel(b.name)) return 1;
+            return a.name.localeCompare(b.name);
+        });
+
+        sorted.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            let label = getModelDisplayLabel(m.name);
+            // is_loaded が明示的に false の場合のみ⳻マーク
+            if (m.is_loaded === false) label += ' ⏳';
+            opt.textContent = label;
+            // デフォルトモデルまたはロード済みturboを選択
+            if (m.name === defaultModel || (m.is_default && sorted.indexOf(m) === 0)) {
+                opt.selected = true;
+            }
+            sel.appendChild(opt);
+        });
+
+        // デフォルト選択がなければ先頭を選択
+        if (!sel.value && sel.options.length > 0) {
+            sel.options[0].selected = true;
+        }
+
+        console.log('[EasyMusic] Models loaded:', sorted.map(m => m.name + (m.is_loaded !== false ? ' ✓' : '')).join(', '));
+
+        // 初期状態のSFTバッチ制限を適用
+        applyModelBatchRestriction();
+
+    } catch (e) {
+        console.warn('[EasyMusic] Failed to load models, using fallback:', e.message);
+        sel.innerHTML = '';
+        // フォールバック: XLモデルのデフォルト選択肢
+        const fallbacks = [
+            { value: 'acestep-v15-xl-turbo', label: t('ace_model_turbo') },
+            { value: 'acestep-v15-xl-sft',   label: t('ace_model_sft') },
+        ];
+        fallbacks.forEach((fb, i) => {
+            const opt = document.createElement('option');
+            opt.value = fb.value;
+            opt.textContent = fb.label;
+            if (i === 0) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+}
+
+/** SFT選択時のバッチ制限を適用/解除 */
+function applyModelBatchRestriction() {
+    const sel = document.getElementById('simple-ace-model');
+    const batchEl = document.getElementById('simple-batch');
+    if (!sel || !batchEl) return;
+
+    if (isSftModel(sel.value)) {
+        Array.from(batchEl.options).forEach(opt => {
+            if (parseInt(opt.value) > 2) opt.disabled = true;
+        });
+        if (parseInt(batchEl.value) > 2) batchEl.value = '2';
+    } else {
+        Array.from(batchEl.options).forEach(opt => { opt.disabled = false; });
+    }
 }
 
 function getThinking() {
@@ -861,19 +1003,25 @@ document.addEventListener('DOMContentLoaded', () => {
             window._captionUserEdited = true;
         });
     }
-    // モデル切替時にSTEPを自動切替 (Turbo→8, Base→50)
+    // モデル切替時にSTEPを自動切替 + SFT時バッチ制限
     const aceModelSelect = document.getElementById('simple-ace-model');
     if (aceModelSelect) {
         aceModelSelect.addEventListener('change', () => {
             const stepsEl = document.getElementById('simple-steps');
-            if (!stepsEl) return;
-            if (aceModelSelect.value === 'turbo') {
-                stepsEl.value = '8';
-            } else {
-                stepsEl.value = '50';
+            if (stepsEl) {
+                if (isTurboModel(aceModelSelect.value)) {
+                    stepsEl.value = '8';
+                } else {
+                    stepsEl.value = '50';
+                }
             }
+            // SFT選択時: バッチサイズを最大2に制限（VRAM安全対策）
+            applyModelBatchRestriction();
         });
     }
+
+    // 起動時にサーバーから利用可能モデルを取得
+    loadAvailableModels();
 });
 
 // =============================================================================
@@ -1018,7 +1166,7 @@ async function generateCover() {
         formData.append('audio_format', 'mp3');
         formData.append('inference_steps', String(getSteps()));
         const aceModel = getAceModel();
-        formData.append('guidance_scale', aceModel === 'acestep-v15-base' ? '7.0' : '3.0');
+        formData.append('guidance_scale', needsCfgModel(aceModel) ? '7.0' : '3.0');
         formData.append('audio_cover_strength', (document.getElementById('cover-strength').value / 100).toFixed(2));
         if (aceModel) formData.append('model', aceModel);
         const neg = getNegativePrompt() || DEFAULT_NEGATIVE_PROMPT;
@@ -1095,7 +1243,7 @@ async function generateRepaint() {
         formData.append('audio_format', 'mp3');
         formData.append('inference_steps', String(getSteps()));
         const aceModel = getAceModel();
-        formData.append('guidance_scale', aceModel === 'acestep-v15-base' ? '7.0' : '3.0');
+        formData.append('guidance_scale', needsCfgModel(aceModel) ? '7.0' : '3.0');
         if (aceModel) formData.append('model', aceModel);
         const neg = getNegativePrompt() || DEFAULT_NEGATIVE_PROMPT;
         formData.append('lm_negative_prompt', neg);
@@ -1212,7 +1360,7 @@ async function generateOmakase(query) {
             batch_size: getBatchSize(),
             audio_format: 'mp3',
             inference_steps: getSteps(),
-            guidance_scale: aceModel === 'acestep-v15-base' ? 7.0 : 3.0,
+            guidance_scale: needsCfgModel(aceModel) ? 7.0 : 3.0,
             use_cot_caption: true,
             use_cot_language: true,
             // ネガティブプロンプト（品質低下防止）
@@ -1641,7 +1789,7 @@ async function generateSimple() {
             batch_size: getBatchSize(),
             audio_format: 'mp3',
             inference_steps: getSteps(), // ユーザー設定値
-            guidance_scale: aceModel === 'acestep-v15-base' ? 7.0 : 3.0, // Turbo: CFG不要(蒸留済), Base: 5-9推奨
+            guidance_scale: needsCfgModel(aceModel) ? 7.0 : 3.0, // Turbo: CFG不要(蒸留済), SFT/Base: 5-9推奨
             // CoT（Chain-of-Thought）による品質強化
             use_cot_caption: true,
             use_cot_language: true,

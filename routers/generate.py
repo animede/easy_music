@@ -15,6 +15,17 @@ from config import settings
 
 router = APIRouter(prefix="/api", tags=["generate"])
 
+# SFT モデルのバッチサイズ上限（VRAM 安全対策: CFGありで実効バッチ×2のため）
+SFT_MAX_BATCH_SIZE = 2
+
+
+def clamp_batch_for_sft(model: Optional[str], batch_size: int) -> int:
+    """SFT モデル選択時はバッチサイズを制限する（OOM 防止）"""
+    if model and "sft" in model.lower() and batch_size > SFT_MAX_BATCH_SIZE:
+        logging.info(f"[SFT guard] batch_size {batch_size} → {SFT_MAX_BATCH_SIZE} (model={model})")
+        return SFT_MAX_BATCH_SIZE
+    return batch_size
+
 
 # =============================================================================
 # Caption Sanitizer — ACE-Step 1.5 制約に合わせる
@@ -174,6 +185,8 @@ async def generate_music(request: GenerateRequest):
         # seedが未指定の場合はランダム生成して追跡できるようにする
         import random
         effective_seed = request.seed if request.seed is not None else random.randint(0, 2**31 - 1)
+        # SFT モデル選択時のバッチサイズ制限
+        effective_batch = clamp_batch_for_sft(request.model, request.batch_size)
 
         result = await ace_step_client.release_task(
             prompt=sanitize_caption(request.prompt),
@@ -184,7 +197,7 @@ async def generate_music(request: GenerateRequest):
             bpm=request.bpm,
             key_scale=request.key_scale,
             time_signature=request.time_signature,
-            batch_size=request.batch_size,
+            batch_size=effective_batch,
             audio_format=request.audio_format,
             seed=effective_seed,
             inference_steps=request.inference_steps,
@@ -340,7 +353,8 @@ async def generate_and_wait(request: GenerateAndWaitRequest):
         if request.model:
             extra_params["model"] = request.model
 
-        # タスク作成
+        # タスク作成（SFT バッチ制限適用）
+        effective_batch = clamp_batch_for_sft(request.model, request.batch_size)
         result = await ace_step_client.release_task(
             prompt=request.prompt,
             lyrics=request.lyrics,
@@ -350,7 +364,7 @@ async def generate_and_wait(request: GenerateAndWaitRequest):
             bpm=request.bpm,
             key_scale=request.key_scale,
             time_signature=request.time_signature,
-            batch_size=request.batch_size,
+            batch_size=effective_batch,
             audio_format=request.audio_format,
             seed=request.seed,
             **extra_params
@@ -536,6 +550,9 @@ async def generate_cover(
         if audio_cover_strength < 1.0:
             effective_cfg = 1.0
 
+        # SFT モデル選択時のバッチサイズ制限
+        effective_batch = clamp_batch_for_sft(model, batch_size)
+
         # パラメータを構築
         form_fields = {
             "prompt": sanitize_caption(prompt),
@@ -544,7 +561,7 @@ async def generate_cover(
             "vocal_language": vocal_language,
             "audio_duration": str(audio_duration),
             "time_signature": time_signature,
-            "batch_size": str(batch_size),
+            "batch_size": str(effective_batch),
             "audio_format": audio_format,
             "inference_steps": str(inference_steps),
             "guidance_scale": str(effective_cfg),
@@ -646,6 +663,9 @@ async def generate_repaint(
         src_audio_bytes = await src_audio.read()
         src_audio_filename = src_audio.filename or "upload.mp3"
 
+        # SFT モデル選択時のバッチサイズ制限
+        effective_batch = clamp_batch_for_sft(model, batch_size)
+
         form_fields = {
             "prompt": sanitize_caption(prompt),
             "lyrics": lyrics,
@@ -653,7 +673,7 @@ async def generate_repaint(
             "vocal_language": vocal_language,
             "audio_duration": str(audio_duration),
             "time_signature": time_signature,
-            "batch_size": str(batch_size),
+            "batch_size": str(effective_batch),
             "audio_format": audio_format,
             "inference_steps": str(inference_steps),
             "guidance_scale": str(guidance_scale),

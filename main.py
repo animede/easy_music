@@ -22,7 +22,7 @@ from routers import generate, lyrics
 app = FastAPI(
     title="Easy Music",
     description="AI音楽生成Webアプリケーション",
-    version="1.0.0"
+    version="1.6.1"
 )
 
 # CORS設定
@@ -123,7 +123,7 @@ async def api_info():
     """API情報"""
     return {
         "name": "Easy Music API",
-        "version": "1.0.0",
+        "version": "1.6.1",
         "endpoints": {
             "generate": {
                 "POST /api/generate": "音楽生成タスク作成",
