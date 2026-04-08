@@ -20,6 +20,15 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 
 ## v1.6.1 New Features
 
+### 🏛️ XL Model Support
+
+At startup, queries the server’s `/v1/models` endpoint and dynamically populates the model selector.
+
+- **Supported models**: TURBO / Base / XL TURBO / XL SFT
+- **Auto parameter adjustment**: CFG, STEP, and batch limit are set automatically per model
+- **SFT/Base**: guidance_scale 7.0, STEP 50, max batch 2
+- **TURBO**: guidance_scale 3.0, STEP 8, no batch limit
+
 ### 🪄 Quick Generate (Omakase)
 
 Just type something like "a refreshing pop song for a summer beach" and the AI automatically determines all parameters — genre, caption, lyrics, BPM, key, and more — to generate music.

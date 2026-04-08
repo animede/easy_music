@@ -20,6 +20,15 @@
 
 ## v1.6.1 新機能
 
+### 🏛️ XLモデル対応
+
+起動時にサーバの `/v1/models` を問い合わせ、利用可能なモデルを動的にセレクタに表示します。
+
+- **対応モデル**: TURBO / Base / XL TURBO / XL SFT
+- **自動パラメータ調整**: モデルに応じて CFG・STEP・Batch上限を自動切替
+- **SFT/Base**: guidance_scale 7.0、STEP 50、Batch 最大2
+- **TURBO**: guidance_scale 3.0、STEP 8、Batch 制限なし
+
 ### 🪄 おまかせ生成 (Quick Generate)
 
 「夏の海辺で聴きたい爽やかなポップ」のように自然言語で入力するだけで、AIがジャンル・キャプション・歌詞・BPM・キーなど全パラメータを自動決定して音楽を生成します。
