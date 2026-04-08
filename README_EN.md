@@ -1,4 +1,4 @@
-# Easy Music v1.6 — AI Music Generator
+# Easy Music v1.6.1 — AI Music Generator
 
 A web application that generates music with one click by selecting a genre.  
 Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generation engine.
@@ -18,7 +18,7 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 - 📋 **History** — Recent 10 generations in a list with playback and download (browser sessionStorage)
 - 🌐 **Bilingual UI** — Japanese / English toggle
 
-## v1.6 New Features
+## v1.6.1 New Features
 
 ### 🪄 Quick Generate (Omakase)
 
