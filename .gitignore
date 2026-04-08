@@ -15,5 +15,7 @@ docs/soften_tone.py
 docs/soften_tone_pass2.py
 docs/acestep_cpp_research.md
 docs/book/
+
+# サーバ版（複数ユーザー分離版）は非公開
 main_server.py
 start_server.sh
