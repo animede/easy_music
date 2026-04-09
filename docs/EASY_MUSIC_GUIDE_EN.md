@@ -28,6 +28,7 @@ Easy Music uses the **ACE-Step 1.5** AI music generation engine to automatically
 - 🎛️ **Auto / Manual Caption** — Generates optimal captions (music style instructions) per genre
 - 🎼 **AI Enhancement** — Automatic BPM, key, and time signature estimation
 - 🔊 **Inline Player** — With spectrum visualizer
+- 🎨 **Visualizer Mood** — LLM infers mood from lyrics/genre, auto-switches 10 color themes × 10 animation modes
 - 🌏 **13 Languages** — Japanese, English, Chinese, Korean, and more
 - 🎶 **JUKEBOX Auto-Play** — Select genres and enjoy endless AI-generated music, one track after another
 - 🪄 **Quick Generate** — Describe what you want in natural language and AI decides all parameters
@@ -140,7 +141,8 @@ JUKEBOX is an auto-play feature where AI continuously generates and plays new so
 - 🎲 **Random Selection**: Randomly picks one genre from your selections each time
 - 🤖 **Fully Automatic**: Theme, lyrics, BPM, key — all decided by AI
 - 🎬 **Visualizer**: Full-screen overlay with audio-reactive animations
-- 🌟 **5 Animation Modes**: Choose from Spectrum / Wave / Ring / Particles / Pulse
+- 🌟 **10 Animation Modes**: Spectrum / Wave / Ring / Particles / Pulse / Aurora / Fireworks / Matrix / Orbit / Fire
+- 🎨 **Mood-Adaptive Colors**: LLM classifies songs into 10 mood categories, auto-switching colors, intensity, and preferred mode
 - 🎨 **Genre Background**: Displays a background image matching the playing genre
 - 📝 **Lyrics Display**: Shows generated lyrics on the overlay
 - 🔢 **Play Count**: Real-time display of how many tracks have been played
@@ -151,16 +153,38 @@ Switch via the selector at the bottom-left of the overlay:
 
 | Mode | Description |
 |------|-------------|
-| **Spectrum** | Frequency spectrum bars |
-| **Wave** | Waveform animation |
-| **Ring** | Circular visualizer |
-| **Particles** | Audio-reactive particles |
-| **Pulse** | Pulsating rings synced to volume |
+| **Spectrum** ▮▮ | Frequency spectrum bars |
+| **Wave** 〜 | Waveform animation |
+| **Ring** ○ | Circular visualizer |
+| **Particles** ✧ | Audio-reactive particles |
+| **Pulse** ◉ | Pulsating rings synced to volume |
+| **Aurora** 🌊 | Flowing light bands |
+| **Fireworks** 🎆 | Bass-reactive firework bursts |
+| **Matrix** 💻 | Digital rain (katakana + binary) |
+| **Orbit** 🪐 | Light spheres orbiting a core |
+| **Fire** 🔥 | Rising flames from the bottom |
 
-**Random mode in JUKEBOX:**
-- Without pressing a button → Animation changes randomly each track (from all 5 modes)
-- After selecting a mode via button → Stays fixed on that mode even when tracks change
-- On next JUKEBOX start → Resets to random again
+### Visualizer Mood (Auto Color Theming)
+
+The LLM analyzes lyrics and genre to classify songs into 10 mood categories. Hue, saturation, brightness, effect intensity, and preferred mode are automatically adjusted.
+
+| Mood | Color Palette | Preferred Modes |
+|------|--------------|----------------|
+| **energetic** | Orange – Yellow | Spectrum, Particles, Fireworks |
+| **melancholic** | Blue-purple – Indigo | Wave, Pulse, Aurora |
+| **healing** | Green – Deep blue | Wave, Aurora, Pulse |
+| **epic** | Red-gold – Amber | Ring, Spectrum, Orbit, Fire |
+| **cyber** | Cyan – Magenta | Particles, Ring, Matrix |
+| **romantic** | Pink – Rose | Pulse, Wave, Orbit |
+| **dark** | Deep purple – Dark red | Ring, Particles, Fire |
+| **festive** | Rainbow (rotating) | Particles, Fireworks, Spectrum |
+| **nostalgic** | Sepia – Warm tones | Wave, Pulse, Aurora |
+| **mystical** | Indigo – Emerald | Ring, Pulse, Orbit, Aurora |
+
+**Auto-switching behavior:**
+- Each new track → LLM infers mood → randomly picks from preferred modes
+- Manually selected mode → stays fixed for that track
+- Next track → returns to mood-based auto-selection
 
 ### Playback Screen Controls
 

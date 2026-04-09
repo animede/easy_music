@@ -1,4 +1,4 @@
-# Easy Music v1.6.1 — AI Music Generator
+# Easy Music v1.7.0 — AI Music Generator
 
 A web application that generates music with one click by selecting a genre.  
 Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generation engine.
@@ -13,12 +13,32 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 - 🎼 **AI Enhancement** — Automatic BPM and key setting
 - 🧠 **Thinking Mode** — Toggle ON/OFF to switch caption generation style
 - 🎚️ **STEP Selector** — Choose 8/20/50/80/100 steps to balance quality and speed
-- 🔊 **Inline Player** — With spectrum visualizer
+- 🔊 **Inline Player** — 10 visualizer modes + LLM mood-adaptive color themes
 - 🔇 **Silent Audio Detection** — Analyzes RMS/peak via Web Audio API, auto-detects silent output
 - 📋 **History** — Recent 10 generations in a list with playback and download (browser sessionStorage)
 - 🌐 **Bilingual UI** — Japanese / English toggle
 
-## v1.6.1 New Features
+## v1.7.0 New Features
+
+### 🎨 Visualizer Mood (Auto Color Theming)
+
+LLM classifies songs into 10 mood categories (energetic / melancholic / healing / epic / cyber / romantic / dark / festive / nostalgic / mystical) based on lyrics and genre, automatically adjusting hue, saturation, brightness, effect intensity, and preferred visualizer mode.
+
+### 🌟 New Visualizer Modes
+
+Expanded from 5 to 10 modes. New: Aurora / Fireworks / Matrix / Orbit / Fire
+
+### 🎵 Auto Song Title
+
+LLM infers song titles from lyrics, displayed on the overlay and in history.
+
+### 🎤 Lyrics Telop
+
+Karaoke-style lyrics display with energy-based LRC timing. 4-line highlight with scroll.
+
+---
+
+## v1.6.1 Features
 
 ### 🏛️ XL Model Support
 

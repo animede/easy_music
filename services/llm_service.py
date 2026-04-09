@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 # システムプロンプト: 作詞
-LYRICS_GENERATE_SYSTEM_PROMPT = """You are a professional lyricist who creates song lyrics for AI music generation (ACE-Step).
+LYRICS_GENERATE_SYSTEM_PROMPT = """You are a professional lyricist who creates song lyrics for AI music generation (ACE-Step 1.5).
 
 CRITICAL OUTPUT RULES:
 1. Start with a JSON metadata line, then output ONLY the lyrics with structure tags
-2. Use structure tags: [intro], [verse], [chorus], [bridge], [outro], [inst] (for instrumental)
+2. Use ONLY official ACE-Step structure tags (see list below)
 3. Do NOT include timestamps like (0:00-0:05) - ACE-Step does not use them
 4. NEVER include romanization/romaji in parentheses or on separate lines
    BAD:  青い空の下 (Aoi sora no shita)   ← WRONG, will break music generation
@@ -30,17 +30,42 @@ CRITICAL OUTPUT RULES:
 6. Each line must contain ONLY the lyrics text in the target language — no translations, no pronunciation guides
 
 REQUIRED FIRST LINE FORMAT (JSON):
-{"recommended_duration": 90, "parts": {"intro": 5, "verse1": 20, "chorus1": 25, "verse2": 20, "chorus2": 25, "outro": 5}}
+{"recommended_duration": 90, "parts": {"verse1": 20, "chorus1": 25, "verse2": 20, "chorus2": 25}}
 
 - recommended_duration: Total song length in seconds (typically 60-180)
 - parts: Estimated duration for each part in seconds
 
-STRUCTURE GUIDELINES:
-- [intro]: Keep short (1-2 lines) or use [inst] for instrumental (5-10 sec)
-- [verse]: 4-6 lines per verse (15-25 sec)
-- [chorus]: 4-6 lines, catchy and memorable (20-30 sec)
-- [bridge]: Optional, 2-4 lines (10-15 sec)
-- [outro]: Short ending, 1-2 lines or [inst] (5-10 sec)
+OFFICIAL ACE-Step STRUCTURE TAGS:
+  Vocal sections (put lyrics UNDER these):
+    [Verse]        — Story, narrative. 4-6 lines (15-25 sec)
+    [Chorus]       — Emotional peak, main hook. 4-6 lines (20-30 sec)
+    [Pre-Chorus]   — Build-up to chorus. 2-4 lines (8-15 sec)
+    [Bridge]       — Contrast/key change. 2-4 lines (10-15 sec)
+  Instrumental sections (do NOT put lyrics under these — vocals will NOT be generated):
+    [Intro]        — Instrumental opening (5-10 sec). NEVER put lyrics here.
+    [Outro]        — Instrumental ending (5-10 sec). NEVER put lyrics here.
+    [Instrumental] — Pure instrumental section
+  Style hints can be appended with "-":
+    [Chorus - anthemic], [Bridge - whispered], [Verse - melancholic]
+
+CRITICAL RULE — NO LYRICS UNDER INSTRUMENTAL TAGS:
+  [Intro], [Outro], [Instrumental], [Guitar Solo], etc. = NO vocals.
+  If you want vocals at the start of a song, use [Verse], NOT [Intro].
+  If you want vocals at the end, use [Chorus] or [Bridge], NOT [Outro].
+
+LYRICS VOLUME GUIDELINES:
+- ACE-Step sings roughly 2-3 words per second (English) / 3-5 characters per second (Japanese)
+- For 47 seconds: aim for 90-140 words (EN) or 130-200 characters (JA)
+- For 60 seconds: aim for 120-180 words (EN) or 170-260 characters (JA)
+- For 120 seconds: aim for 240-360 words (EN) or 340-520 characters (JA)
+- Too many lyrics → rushed singing, garbled output
+- Too few lyrics → long pauses, unwanted repetition
+- Keep each line to 6-10 syllables for natural singing
+
+VOCAL EXPRESSION TECHNIQUES:
+- UPPERCASE = stronger vocal intensity:  "WE ARE THE CHAMPIONS!" (shouting/emphasis)
+- (parentheses) = backing vocals/echo:  "We rise together (together)"
+- Extended vowels = sustained notes:     "Feeeling so aliiive" (use sparingly, effect unstable)
 
 STYLE GUIDELINES:
 - Match the mood and genre specified
@@ -49,12 +74,24 @@ STYLE GUIDELINES:
 - If English: Write ONLY in English
 - Keep vocabulary natural for singing
 - IMPORTANT: Adding romanization doubles the lyrics and causes ACE-Step to sing garbled output
+- Separate sections with blank lines for clarity
 
 SECTION ROLE GUIDELINES:
-- [verse]: Build the narrative. Describe a scene, tell a story; vary the melody to sustain interest.
-- [chorus]: Emotional peak. The main hook — repeated 2-3 times, maximum energy, most memorable lines.
-- [bridge]: Contrast and pivot. New perspective or emotional shift (2-4 lines) before the final chorus.
-- [outro]: Resolution. Echo of the chorus theme or a quiet fade. Short (1-2 lines or [inst]).
+- [Verse]: Build the narrative. Describe a scene, tell a story; vary the melody to sustain interest.
+- [Pre-Chorus]: Heighten anticipation. Short transitional section that builds energy toward the chorus.
+- [Chorus]: Emotional peak. The main hook — repeated 2-3 times, maximum energy, most memorable lines.
+- [Bridge]: Contrast and pivot. New perspective or emotional shift (2-4 lines) before the final chorus.
+
+TYPICAL SONG STRUCTURE:
+  [Intro]  ← instrumental only, no lyrics
+  [Verse 1]
+  [Pre-Chorus]
+  [Chorus]
+  [Verse 2]
+  [Chorus]
+  [Bridge]
+  [Chorus]
+  [Outro]  ← instrumental only, no lyrics
 
 MOOD-SPECIFIC VOCABULARY (if a mood is specified, incorporate these words and imagery naturally):
 - Bright/Happy:     輝く、笑顔、光、夢、希望、踊る、楽しい、嬉しい
@@ -358,12 +395,79 @@ IMPORTANT: Do NOT add romanization or pronunciation in parentheses. Output lyric
         # ローマ字行を自動除去（安全策）
         lyrics = self._strip_romaji_lines(lyrics)
         
+        # 歌詞構造バリデーション（instrumental タグ下の歌詞行を修正）
+        lyrics = self._fix_lyrics_structure(lyrics)
+        
         return {
             "lyrics": lyrics,
             "recommended_duration": metadata.get("recommended_duration", 90),
             "parts": metadata.get("parts", {})
         }
     
+    # ACE-Step 公式ドキュメント準拠:
+    #   instrumental タグ — これらの下に歌詞を置くとボーカルが生成されない
+    #   [Intro], [Outro] = 基本構造タグだが通常インスト
+    #   [Instrumental], [inst] = 純粋インスト指定
+    #   複合形: [Guitar Solo], [Piano Interlude], [Drum Break] 等
+    _INSTRUMENTAL_TAGS = {
+        "intro", "outro", "instrumental", "inst",
+        "guitar solo", "piano interlude", "drum break",
+        "interlude", "break", "solo",
+        "fade out", "silence",
+        "build", "drop", "breakdown",
+    }
+    # 歌詞を置ける vocal タグ
+    _VOCAL_TAGS = {"verse", "chorus", "pre-chorus", "bridge"}
+    _TAG_RE = re.compile(r'^\[([a-zA-Z][a-zA-Z0-9\- ]*)\]$')
+
+    @classmethod
+    def _fix_lyrics_structure(cls, lyrics: str) -> str:
+        """歌詞構造バリデーション
+        
+        instrumental タグ ([intro], [interlude], [outro] 等) の下に
+        歌詞行がある場合、vocal タグ ([verse]) に変更する。
+        ACE-Step は instrumental タグ下の歌詞をボーカルとして生成しない。
+        """
+        lines = lyrics.split('\n')
+        result: list[str] = []
+        current_tag = ''
+        fixes = 0
+
+        for line in lines:
+            stripped = line.strip()
+            m = cls._TAG_RE.match(stripped)
+            if m:
+                tag_name = m.group(1).strip().lower()
+                # 数字の接尾辞を除去して判定 (e.g. "verse 2" → "verse")
+                base_tag = re.sub(r'[\s\d]+$', '', tag_name)
+                current_tag = base_tag
+                result.append(line)
+                continue
+
+            # 空行はそのまま
+            if not stripped:
+                result.append(line)
+                continue
+
+            # instrumental タグ配下に歌詞行がある → [verse] に変更
+            if current_tag in cls._INSTRUMENTAL_TAGS:
+                logger.warning(
+                    '歌詞バリデーション: [%s] 配下に歌詞行 "%s" を検出 → [verse] に変更',
+                    current_tag, stripped[:30]
+                )
+                result.append('[verse]')
+                current_tag = 'verse'
+                fixes += 1
+                result.append(line)
+                continue
+
+            result.append(line)
+
+        if fixes:
+            logger.info('歌詞バリデーション: %d 箇所を自動修正しました', fixes)
+
+        return '\n'.join(result)
+
     @staticmethod
     def _strip_romaji_lines(lyrics: str) -> str:
         """ローマ字併記行を除去
@@ -942,6 +1046,155 @@ Generate one original {genre_key} song theme:""".strip()
             import logging
             logging.getLogger(__name__).warning(f"Theme generation failed: {e}")
             return genre or "music"
+
+    async def generate_title(
+        self,
+        lyrics: str,
+        genre: str = "",
+        language: str = "Japanese",
+        theme: str = ""
+    ) -> str:
+        """
+        歌詞の雰囲気から曲名を生成
+
+        Args:
+            lyrics: 歌詞テキスト
+            genre: ジャンル
+            language: 言語
+            theme: テーマ（参考情報）
+
+        Returns:
+            曲名文字列
+        """
+        # 歌詞を切り詰め（トークン節約）
+        lyrics_snippet = lyrics[:600] if lyrics else ""
+
+        parts = []
+        if genre:
+            parts.append(f"Genre: {genre}")
+        if theme:
+            parts.append(f"Theme: {theme}")
+        parts.append(f"Language: {language}")
+        parts.append(f"Lyrics:\n{lyrics_snippet}")
+
+        prompt = "\n".join(parts) + "\n\nGenerate a song title."
+
+        system = (
+            "You are a professional songwriter who creates evocative song titles.\n"
+            "Given the lyrics, genre, and language, output a single song title that captures the mood and essence of the lyrics.\n\n"
+            "RULES:\n"
+            "1. Output ONLY the title — no quotes, no explanation, no numbering, no alternatives\n"
+            "2. The title language should match the lyrics language\n"
+            "3. Keep it short: 1-6 words (Japanese: 2-12 characters)\n"
+            "4. Make it poetic and memorable — evoke imagery or emotion\n"
+            "5. Do NOT use generic titles like \"Song\" or \"Untitled\"\n"
+            "6. If lyrics are in Japanese, output Japanese title. If English, output English title.\n"
+        )
+
+        try:
+            response = await self.chat(
+                user_message=prompt,
+                system_prompt=system,
+                temperature=0.9
+            )
+            # クリーンアップ: 引用符や余計な記号を除去
+            title = response.strip().strip('"\'\'\u201c\u201d\u300c\u300d').strip()
+            # 複数行の場合は1行目だけ
+            if "\n" in title:
+                title = title.split("\n")[0].strip()
+            # 長すぎる場合はカット
+            if len(title) > 50:
+                title = title[:50]
+            return title or (theme or genre or "Untitled")
+        except Exception as e:
+            logger.warning("Title generation failed: %s", e)
+            return theme or genre or "Untitled"
+
+    # 有効な viz mood ID のセット
+    _VIZ_MOOD_IDS = {
+        "energetic", "melancholic", "healing", "epic", "cyber",
+        "romantic", "dark", "festive", "nostalgic", "mystical",
+    }
+
+    # ジャンル → デフォルト mood_id（LLM 失敗時フォールバック）
+    _GENRE_DEFAULT_MOOD: Dict[str, str] = {
+        "J-POP": "energetic", "Rock": "epic", "Ballad": "melancholic",
+        "Jazz": "nostalgic", "Electronic": "cyber", "R&B": "romantic",
+        "Hip-Hop": "dark", "Classical": "mystical", "Folk": "nostalgic",
+        "Anime Song": "epic", "Vocaloid": "cyber", "Enka": "melancholic",
+        "Lo-Fi": "healing", "Healing": "healing", "Piano Healing": "healing",
+        "City Pop": "nostalgic", "Bossa Nova": "healing", "Trance": "cyber",
+        "Mood": "romantic", "Driving": "energetic", "Country": "nostalgic",
+        "Reggae": "festive", "Gospel": "epic", "Reggaeton": "festive",
+        "K-POP": "energetic", "Phonk": "dark", "Chanson": "romantic",
+        "Folklore": "mystical", "Acoustic Pop": "healing",
+        "Children's Song": "festive", "Min'yo": "mystical",
+        "70s Kayokyoku": "nostalgic", "80s Folk": "nostalgic",
+        "90s J-POP": "energetic", "New Music": "nostalgic",
+    }
+
+    async def generate_viz_mood(
+        self,
+        lyrics: str = "",
+        caption: str = "",
+        genre: str = "",
+        omakase_query: str = "",
+    ) -> str:
+        """
+        歌詞・キャプション・ジャンルからビジュアライザー用の雰囲気IDを推定。
+
+        Returns:
+            10種の mood_id のいずれか
+        """
+        # 入力が何もなければジャンルデフォルト
+        if not lyrics and not caption and not omakase_query:
+            return self._GENRE_DEFAULT_MOOD.get(genre, "energetic")
+
+        parts = []
+        if genre:
+            parts.append(f"Genre: {genre}")
+        if omakase_query:
+            parts.append(f"User request: {omakase_query}")
+        if caption:
+            parts.append(f"Caption: {caption[:300]}")
+        if lyrics:
+            parts.append(f"Lyrics:\n{lyrics[:400]}")
+
+        prompt = "\n".join(parts) + "\n\nClassify the mood of this song."
+
+        system = (
+            "You classify songs into exactly one visual mood category for a music visualizer.\n"
+            "VALID CATEGORIES (output ONLY one of these words, nothing else):\n"
+            "  energetic    — upbeat, bouncy, high energy, dance, fun pop\n"
+            "  melancholic  — sad, bittersweet, longing, tears, heartbreak\n"
+            "  healing      — calm, gentle, soothing, relaxing, peaceful, lo-fi\n"
+            "  epic         — grand, dramatic, powerful, cinematic, heroic\n"
+            "  cyber        — electronic, digital, futuristic, synth, vocaloid, cyberpunk\n"
+            "  romantic     — love, tender, sweet, warm, intimate\n"
+            "  dark         — ominous, aggressive, gritty, intense, gothic\n"
+            "  festive      — party, celebration, carnival, joyful, cheerful\n"
+            "  nostalgic    — retro, memories, wistful, old times, sepia-tone\n"
+            "  mystical     — mysterious, ethereal, fantasy, spiritual, otherworldly\n\n"
+            "Output ONLY the single category word. No explanation."
+        )
+
+        try:
+            response = await self.chat(
+                user_message=prompt,
+                system_prompt=system,
+                temperature=0.3,
+            )
+            mood = response.strip().lower().split()[0] if response.strip() else ""
+            # 余計な句読点を除去
+            mood = re.sub(r'[^a-z]', '', mood)
+            if mood in self._VIZ_MOOD_IDS:
+                return mood
+            # LLM出力が有効でなければジャンルデフォルト
+            logger.info("viz_mood LLM returned '%s', falling back to genre default", mood)
+            return self._GENRE_DEFAULT_MOOD.get(genre, "energetic")
+        except Exception as e:
+            logger.warning("viz_mood generation failed: %s", e)
+            return self._GENRE_DEFAULT_MOOD.get(genre, "energetic")
 
     async def generate_full(
         self,

@@ -17,7 +17,7 @@ const I18N = {
         label_theme: 'テーマ / シナリオ',
         label_lyrics: '歌詞（空欄ならAIが自動生成）',
         label_genre: 'ジャンル',
-        label_duration: '長さ',
+        label_duration: '曲長',
         label_language: '言語',
         label_inst: '楽器のみ',
         label_builtin_caption: 'キャプション自動',
@@ -427,6 +427,7 @@ let selectedBlendGenre = null;  // ジャンルミックス: {name, hint}
 let currentResults = [];
 let currentTrackIndex = 0;
 let currentLyrics = '';
+let currentSongTitle = '';
 
 // =============================================================================
 // デバッグパネル（タグ・キャプション表示）
@@ -482,6 +483,21 @@ let vizMode = 'spectrum';        // 'spectrum' | 'wave' | 'ring' | 'particles' |
 let vizModeUserSelected = false; // ユーザーが手動選択したらtrue、JUKEBOX開始時にリセット
 let vizParticles = [];           // particles mode state
 let vizTimeData = null;          // waveform data buffer
+let currentVizMood = null;       // 現在のビジュアライザー雰囲気テーマ
+
+// ビジュアライザー雰囲気テーマ定義（10種）
+const VIZ_MOOD_THEMES = {
+    energetic:   { hueMin: 30,  hueMax: 60,  sat: 90, lit: 60, intensity: 1.3, glow: 1.4, pSpeed: 1.5, modes: ['spectrum','particles','fireworks'] },
+    melancholic: { hueMin: 220, hueMax: 260, sat: 65, lit: 50, intensity: 0.7, glow: 1.0, pSpeed: 0.7, modes: ['wave','pulse','aurora'] },
+    healing:     { hueMin: 140, hueMax: 200, sat: 55, lit: 55, intensity: 0.5, glow: 0.8, pSpeed: 0.5, modes: ['wave','aurora','pulse'] },
+    epic:        { hueMin: 0,   hueMax: 30,  sat: 85, lit: 55, intensity: 1.2, glow: 1.5, pSpeed: 1.2, modes: ['ring','spectrum','orbit','fire'] },
+    cyber:       { hueMin: 170, hueMax: 310, sat: 90, lit: 60, intensity: 1.0, glow: 1.3, pSpeed: 1.1, modes: ['particles','ring','matrix'] },
+    romantic:    { hueMin: 330, hueMax: 360, sat: 70, lit: 60, intensity: 0.8, glow: 1.1, pSpeed: 0.8, modes: ['pulse','wave','orbit'] },
+    dark:        { hueMin: 270, hueMax: 300, sat: 60, lit: 35, intensity: 1.0, glow: 0.9, pSpeed: 1.0, modes: ['ring','particles','fire'] },
+    festive:     { hueMin: 0,   hueMax: 360, sat: 85, lit: 60, intensity: 1.4, glow: 1.5, pSpeed: 1.6, modes: ['particles','fireworks','spectrum'] },
+    nostalgic:   { hueMin: 20,  hueMax: 50,  sat: 50, lit: 50, intensity: 0.6, glow: 0.8, pSpeed: 0.6, modes: ['wave','pulse','aurora'] },
+    mystical:    { hueMin: 180, hueMax: 260, sat: 70, lit: 50, intensity: 0.8, glow: 1.2, pSpeed: 0.8, modes: ['ring','pulse','orbit','aurora'] },
+};
 
 // JUKEBOX state
 let jukeboxMode = false;
@@ -878,6 +894,15 @@ function clearLyrics() {
 function getMood() { return selectedMood; }
 function getVocal() { return selectedVocal; }
 
+function clearMoodChips() {
+    document.querySelectorAll('#mood-chips .mood-chip').forEach(c => c.classList.remove('active'));
+    selectedMood = '';
+}
+function clearVocalChips() {
+    document.querySelectorAll('#vocal-chips .mood-chip').forEach(c => c.classList.remove('active'));
+    selectedVocal = '';
+}
+
 function setBlendGenre(selectEl) {
     const val = selectEl.value;
     if (!val) { selectedBlendGenre = null; return; }
@@ -945,7 +970,7 @@ function initGenreGrid() {
     }
 
     // ムードチップ初期化
-    document.querySelectorAll('#mood-chips .mood-chip').forEach(chip => {
+    document.querySelectorAll('#mood-chips .mood-chip:not(.chip-clear)').forEach(chip => {
         chip.addEventListener('click', () => {
             const isActive = chip.classList.contains('active');
             document.querySelectorAll('#mood-chips .mood-chip').forEach(c => c.classList.remove('active'));
@@ -958,7 +983,7 @@ function initGenreGrid() {
     });
 
     // ボーカルチップ初期化
-    document.querySelectorAll('#vocal-chips .mood-chip').forEach(chip => {
+    document.querySelectorAll('#vocal-chips .mood-chip:not(.chip-clear)').forEach(chip => {
         chip.addEventListener('click', () => {
             const isActive = chip.classList.contains('active');
             document.querySelectorAll('#vocal-chips .mood-chip').forEach(c => c.classList.remove('active'));
@@ -1906,9 +1931,28 @@ async function generateSimple() {
                     playSimpleTrack(0);
                     showSimpleStatus(`✅ ${currentResults.length}${t('status_complete')}`, 'success');
 
-                    // 履歴を更新（完了 + audio URLs）
+                    // 曲名を非同期生成（再生開始をブロックしない）
+                    if (effectiveLyrics && effectiveLyrics !== '[inst]') {
+                        fetchSongTitle(
+                            effectiveLyrics,
+                            selectedGenre ? selectedGenre.name : '',
+                            getSelectedLanguageName(),
+                            theme,
+                            taskId
+                        );
+                    }
+
+                    // ビジュアライザー雰囲気を非同期推定
+                    fetchVizMood(
+                        effectiveLyrics || '',
+                        '',
+                        selectedGenre ? selectedGenre.name : '',
+                        ''
+                    );
+
+                    // 履歴を更新（完了 + audio URLs + 歌詞保存）
                     const audioUrls = currentResults.map(r => convertAudioUrl(r.url));
-                    updateHistoryEntry(taskId, audioUrls);
+                    updateHistoryEntry(taskId, audioUrls, { lyrics: effectiveLyrics });
                 }
                 hideSimpleProgress();
                 return;
@@ -2006,18 +2050,16 @@ function playSimpleTrack(index) {
     document.querySelectorAll('.track-btn').forEach((b, i) => b.classList.toggle('active', i === index));
     document.querySelectorAll('.overlay-track-btn').forEach((b, i) => b.classList.toggle('active', i === index));
 
-    // Show lyrics in overlay (hide for instrumental)
-    const lyricsEl = document.getElementById('overlay-lyrics');
-    if (lyricsEl) {
-        if (currentLyrics && currentLyrics !== '[inst]') {
-            // 構造タグを除去して表示
-            lyricsEl.textContent = currentLyrics
-                .replace(/\[(verse|chorus|bridge|outro|intro|hook|pre-chorus|interlude|rap|spoken)\d*\]/gi, '')
-                .replace(/^\s*\n/gm, '\n')
-                .trim();
-        } else {
-            lyricsEl.textContent = '';
-        }
+    // Show lyrics in overlay — テロップモード
+    const lyricsForTelop = result.lyrics || currentLyrics || '';
+    if (lyricsForTelop && lyricsForTelop !== '[inst]') {
+        // 即座に静的歌詞を表示（フォールバック）
+        showStaticLyrics(lyricsForTelop);
+        // 非同期で LRC を取得→成功時にテロップに切替
+        const rawUrl = result.url || '';
+        fetchLrc(rawUrl, lyricsForTelop);
+    } else {
+        clearTelop();
     }
 
     // Init visualizer if needed
@@ -2076,6 +2118,8 @@ function initAudioSync() {
         const jbTime = document.getElementById('jukebox-time-display');
         if (jbSeek) jbSeek.value = pct;
         if (jbTime) jbTime.textContent = `${cur} / ${dur}`;
+        // テロップ同期
+        updateTelop(audio.currentTime);
     });
 
     // Seek from bars
@@ -2132,6 +2176,169 @@ function initAudioSync() {
 }
 
 // =============================================================================
+// Telop — 歌詞テロップエンジン
+// =============================================================================
+
+/** 現在ロード中の LRC データ: [{time, text, section}, ...] | null */
+let currentLrc = null;
+/** 現在のテロップ行インデックス */
+let currentTelopIdx = -1;
+/** LRC フェッチ中の AbortController */
+let _lrcAbort = null;
+
+/**
+ * 静的歌詞表示（フォールバック / LRC 取得前）
+ * 構造タグを除去してテロップコンテナに静的行として表示
+ */
+function showStaticLyrics(lyrics) {
+    const container = document.getElementById('telop-container');
+    if (!container) return;
+    container.innerHTML = '';
+    const cleaned = lyrics
+        .replace(/\[(verse|chorus|bridge|outro|intro|pre-chorus|instrumental|inst|build|drop|breakdown|guitar solo|piano interlude|drum break|fade out|silence)\s*[^\]]*\]/gi, '')
+        .replace(/^\s*\n/gm, '\n')
+        .trim();
+    if (!cleaned) return;
+    cleaned.split('\n').forEach(line => {
+        if (!line.trim()) return;
+        const el = document.createElement('div');
+        el.className = 'telop-line telop-static';
+        el.textContent = line;
+        container.appendChild(el);
+    });
+}
+
+/**
+ * LRC データをサーバから取得する
+ * @param {string} audioUrl  音声 URL（/v1/audio?path=... 形式）
+ * @param {string} lyrics    歌詞テキスト
+ */
+async function fetchLrc(audioUrl, lyrics) {
+    // 前回のフェッチをキャンセル
+    if (_lrcAbort) _lrcAbort.abort();
+    _lrcAbort = new AbortController();
+
+    currentLrc = null;
+    currentTelopIdx = -1;
+
+    if (!audioUrl || !lyrics || lyrics.trim() === '[inst]') {
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/lrc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio_url: audioUrl, lyrics }),
+            signal: _lrcAbort.signal,
+        });
+        if (!resp.ok) return;  // 静的表示を維持
+        const data = await resp.json();
+        if (data.lrc && data.lrc.length > 0) {
+            currentLrc = data.lrc;
+            renderTelopLines();
+            console.log('[Telop] LRC loaded:', data.lrc.length, 'lines');
+        }
+        // LRC が null の場合は静的表示をそのまま維持
+    } catch (e) {
+        if (e.name !== 'AbortError') console.warn('[Telop] LRC fetch failed:', e);
+        // 失敗時も静的表示を維持
+    }
+}
+
+/** テロップ行を DOM にレンダリング（セクションタグを除外） */
+/** ハイライトする行数 */
+const TELOP_HIGHLIGHT_LINES = 4;
+
+function renderTelopLines() {
+    const container = document.getElementById('telop-container');
+    if (!container || !currentLrc) return;
+    container.innerHTML = '';
+    // [tag] 形式のセクションタグを除外
+    const tagRe = /^\[.+\]$/;
+    currentLrc = currentLrc.filter(l => !tagRe.test(l.text.trim()));
+    currentLrc.forEach((line, idx) => {
+        const el = document.createElement('div');
+        el.className = 'telop-line';
+        el.dataset.idx = idx;
+        el.textContent = line.text;
+        container.appendChild(el);
+    });
+    currentTelopIdx = -1;
+    // 初期位置: 先頭 3 行をハイライト（イントロ中から歌詞を見せる）
+    _scrollTelopTo(0);
+}
+
+/** テロップをクリア */
+function clearTelop() {
+    const container = document.getElementById('telop-container');
+    if (container) container.innerHTML = '';
+    currentLrc = null;
+    currentTelopIdx = -1;
+}
+
+/**
+ * ハイライト4行の中央行がコンテナ中央に来るようスクロールする。
+ * idx = ハイライトグループの先頭行インデックス。
+ */
+function _scrollTelopTo(idx) {
+    const container = document.getElementById('telop-container');
+    if (!container) return;
+    const lines = container.querySelectorAll('.telop-line');
+    if (lines.length === 0) return;
+
+    const lineH = lines[0].offsetHeight || 30;
+    const wrapper = container.parentElement;
+    const wrapperH = wrapper ? wrapper.offsetHeight : lineH * 7;
+
+    // ハイライト4行の中央行をコンテナ中央に
+    const centerIdx = Math.max(idx, 0) + Math.floor(TELOP_HIGHLIGHT_LINES / 2);
+    const offset = centerIdx * lineH - (wrapperH / 2) + (lineH / 2);
+    container.style.transform = `translateY(${-offset}px)`;
+
+    // クラス更新
+    const hiStart = Math.max(idx, 0);
+    const hiEnd = hiStart + TELOP_HIGHLIGHT_LINES - 1;
+    lines.forEach((el, i) => {
+        el.classList.remove('active', 'near');
+        if (i >= hiStart && i <= hiEnd) {
+            el.classList.add('active');
+        } else if (i === hiStart - 1 || i === hiEnd + 1) {
+            el.classList.add('near');
+        }
+    });
+}
+
+/**
+ * audio.currentTime に基づいてアクティブ行を更新する。
+ * initAudioSync の timeupdate から呼ばれる。
+ */
+function updateTelop(currentTime) {
+    if (!currentLrc || currentLrc.length === 0) return;
+
+    // 現在時刻に該当する行を探索
+    let idx = -1;
+    for (let i = currentLrc.length - 1; i >= 0; i--) {
+        if (currentTime >= currentLrc[i].time) {
+            idx = i;
+            break;
+        }
+    }
+
+    // 歌詞終了後: 最後の 3 行ハイライトを維持（フリーズ）
+    if (idx >= 0) {
+        const lastGroupStart = Math.max(currentLrc.length - TELOP_HIGHLIGHT_LINES, 0);
+        if (idx >= lastGroupStart) {
+            idx = lastGroupStart;
+        }
+    }
+
+    if (idx === currentTelopIdx) return;  // 変化なし
+    currentTelopIdx = idx;
+    _scrollTelopTo(idx);
+}
+
+// =============================================================================
 // Circle Overlay Visualizer
 // =============================================================================
 
@@ -2148,6 +2355,94 @@ function hideOverlay() {
     const overlay = document.getElementById('circle-overlay');
     overlay.classList.remove('visible');
     if (circleAnimId) { cancelAnimationFrame(circleAnimId); circleAnimId = null; }
+    clearTelop();
+    setSongTitle('');
+}
+
+/**
+ * オーバーレイに曲名を表示
+ */
+function setSongTitle(title) {
+    currentSongTitle = title || '';
+    const el = document.getElementById('overlay-song-title');
+    if (el) el.textContent = currentSongTitle;
+}
+
+/**
+ * 歌詞から曲名を非同期生成して表示
+ * @param {string} taskId  履歴に紐付ける task_id（省略可）
+ */
+async function fetchSongTitle(lyrics, genre, language, theme, taskId) {
+    if (!lyrics || lyrics.trim() === '[inst]') {
+        setSongTitle('');
+        return;
+    }
+    try {
+        const resp = await apiRequest('/api/title', 'POST', {
+            lyrics: lyrics,
+            genre: genre || '',
+            language: language || 'Japanese',
+            theme: theme || ''
+        });
+        if (resp.success && resp.title) {
+            setSongTitle(resp.title);
+            console.log('[Telop] Song title:', resp.title);
+            // 履歴にも曲名を保存
+            if (taskId) {
+                updateHistoryEntry(taskId, null, { title: resp.title });
+            }
+        }
+    } catch (e) {
+        console.warn('[Telop] Title fetch failed:', e);
+    }
+}
+
+/**
+ * ビジュアライザー雰囲気を適用
+ */
+function applyVizMood(moodId) {
+    const theme = VIZ_MOOD_THEMES[moodId];
+    if (!theme) return;
+    currentVizMood = theme;
+    console.log('[Viz] Mood applied:', moodId);
+
+    // 新しい曲ごとにリセット → ムード推奨モードに自動切替
+    vizModeUserSelected = false;
+    if (theme.modes && theme.modes.length > 0) {
+        const preferred = theme.modes[Math.floor(Math.random() * theme.modes.length)];
+        vizMode = preferred;
+        // ボタンのactive状態を更新
+        document.querySelectorAll('.viz-mode-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.mode === preferred);
+        });
+        console.log('[Viz] Auto-selected mode:', preferred);
+    }
+
+    // matrix / fire 用のパーティクルをリセット
+    matrixDrops = [];
+    fireParticles = [];
+    fwBursts = [];
+    orbitBodies = null;
+}
+
+/**
+ * LLMでビジュアライザー雰囲気を推定して適用
+ */
+async function fetchVizMood(lyrics, caption, genre, omakaseQuery) {
+    try {
+        const resp = await apiRequest('/api/viz_mood', 'POST', {
+            lyrics: (lyrics || '').substring(0, 500),
+            caption: (caption || '').substring(0, 300),
+            genre: genre || '',
+            omakase_query: omakaseQuery || '',
+        });
+        if (resp.success && resp.mood) {
+            applyVizMood(resp.mood);
+        }
+    } catch (e) {
+        console.warn('[Viz] Mood fetch failed, using default:', e);
+        applyVizMood('energetic');
+    }
 }
 
 /**
@@ -2237,6 +2532,11 @@ function startCircleAnimation() {
             case 'ring':      drawRing(ctx, W, H); break;
             case 'particles': drawParticles(ctx, W, H); break;
             case 'pulse':     drawPulse(ctx, W, H); break;
+            case 'aurora':    drawAurora(ctx, W, H); break;
+            case 'fireworks': drawFireworks(ctx, W, H); break;
+            case 'matrix':    drawMatrix(ctx, W, H); break;
+            case 'orbit':     drawOrbit(ctx, W, H); break;
+            case 'fire':      drawFire(ctx, W, H); break;
             default:          drawSpectrum(ctx, W, H); break;
         }
     }
@@ -2244,13 +2544,26 @@ function startCircleAnimation() {
     draw();
 }
 
+/** mood テーマから hue を計算するヘルパー。t=0..1 で hueMin..hueMax を補間 */
+function moodHue(t) {
+    const m = currentVizMood || VIZ_MOOD_THEMES.energetic;
+    if (m.hueMin <= m.hueMax) return m.hueMin + t * (m.hueMax - m.hueMin);
+    // wrap (例: romantic 330→360 → 実質 330→360)
+    const range = (360 - m.hueMin) + m.hueMax;
+    return (m.hueMin + t * range) % 360;
+}
+function moodSat()  { return (currentVizMood || VIZ_MOOD_THEMES.energetic).sat; }
+function moodLit()  { return (currentVizMood || VIZ_MOOD_THEMES.energetic).lit; }
+function moodInt()  { return (currentVizMood || VIZ_MOOD_THEMES.energetic).intensity; }
+function moodGlow() { return (currentVizMood || VIZ_MOOD_THEMES.energetic).glow; }
+
 // --- Spectrum (スペクトル) ---
 function drawSpectrum(ctx, W, H) {
     const cx = W / 2;
     const cy = H / 2;
     const maxRadius = Math.min(W, H) * 0.38;
     const barCount = 48;
-    const barMaxH = maxRadius * 0.7;
+    const barMaxH = maxRadius * 0.7 * moodInt();
     const barW = 5;
     const barGap = 3;
     const spectrumWidth = barCount * (barW + barGap);
@@ -2263,11 +2576,11 @@ function drawSpectrum(ctx, W, H) {
         const val = dataArray[dataIdx] / 255;
         const barH = val * barMaxH;
         const x = specX + i * (barW + barGap);
-        const hue = 260 + (i / barCount) * 80;
-        const saturation = 75 + val * 25;
-        const lightness = 55 + val * 20;
+        const hue = moodHue(i / barCount);
+        const saturation = moodSat() - 15 + val * 25;
+        const lightness = moodLit() - 5 + val * 20;
 
-        ctx.shadowBlur = 12 + val * 15;
+        ctx.shadowBlur = (12 + val * 15) * moodGlow();
         ctx.shadowColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         const barGrad = ctx.createLinearGradient(x, specY - barH / 2, x, specY + barH / 2);
         barGrad.addColorStop(0, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
@@ -2284,13 +2597,12 @@ function drawSpectrum(ctx, W, H) {
 function drawWave(ctx, W, H) {
     if (!vizTimeData) return;
     const cy = H / 2;
-    const amplitude = H * 0.28;
+    const amplitude = H * 0.28 * moodInt();
     const sliceWidth = W / vizTimeData.length;
 
     for (let mirror = 0; mirror < 2; mirror++) {
         ctx.beginPath();
         const sign = mirror === 0 ? 1 : -1;
-        const hueOffset = mirror * 40;
         for (let i = 0; i < vizTimeData.length; i++) {
             const v = (vizTimeData[i] / 128.0) - 1.0;
             const y = cy + sign * v * amplitude;
@@ -2298,18 +2610,19 @@ function drawWave(ctx, W, H) {
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
-        const hue = 260 + hueOffset;
-        ctx.strokeStyle = `hsla(${hue}, 80%, 65%, 0.7)`;
+        const hue = moodHue(mirror * 0.3);
+        ctx.strokeStyle = `hsla(${hue}, ${moodSat()}%, ${moodLit()+5}%, 0.7)`;
         ctx.lineWidth = 2.5;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = `hsla(${hue}, 80%, 60%, 0.5)`;
+        ctx.shadowBlur = 15 * moodGlow();
+        ctx.shadowColor = `hsla(${hue}, ${moodSat()}%, ${moodLit()}%, 0.5)`;
         ctx.stroke();
     }
 
     ctx.beginPath();
     ctx.moveTo(0, cy);
     ctx.lineTo(W, cy);
-    ctx.strokeStyle = 'rgba(124, 92, 252, 0.15)';
+    const centerHue = moodHue(0.5);
+    ctx.strokeStyle = `hsla(${centerHue}, ${moodSat()}%, ${moodLit()}%, 0.15)`;
     ctx.lineWidth = 1;
     ctx.shadowBlur = 0;
     ctx.stroke();
@@ -2328,34 +2641,35 @@ function drawRing(ctx, W, H) {
         const dataIdx = Math.floor(i * specBins / barCount);
         const val = dataArray[dataIdx] / 255;
         const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
-        const barLen = val * baseRadius * 0.9;
+        const barLen = val * baseRadius * 0.9 * moodInt();
 
         const x1 = cx + Math.cos(angle) * baseRadius;
         const y1 = cy + Math.sin(angle) * baseRadius;
         const x2 = cx + Math.cos(angle) * (baseRadius + barLen);
         const y2 = cy + Math.sin(angle) * (baseRadius + barLen);
 
-        const hue = (i / barCount) * 120 + 240;
-        const lightness = 55 + val * 20;
+        const hue = moodHue(i / barCount);
+        const lightness = moodLit() + val * 20;
 
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
-        ctx.strokeStyle = `hsla(${hue}, 80%, ${lightness}%, 0.8)`;
+        ctx.strokeStyle = `hsla(${hue}, ${moodSat()}%, ${lightness}%, 0.8)`;
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
-        ctx.shadowBlur = 8 + val * 12;
-        ctx.shadowColor = `hsla(${hue}, 80%, ${lightness}%, 0.6)`;
+        ctx.shadowBlur = (8 + val * 12) * moodGlow();
+        ctx.shadowColor = `hsla(${hue}, ${moodSat()}%, ${lightness}%, 0.6)`;
         ctx.stroke();
     }
 
     const avgVal = Array.from(dataArray.slice(0, 32)).reduce((a, b) => a + b, 0) / 32 / 255;
+    const ringHue = moodHue(0.5);
     ctx.beginPath();
     ctx.arc(cx, cy, baseRadius * (0.95 + avgVal * 0.05), 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(167, 139, 250, ${0.2 + avgVal * 0.3})`;
+    ctx.strokeStyle = `hsla(${ringHue}, ${moodSat()}%, ${moodLit()}%, ${0.2 + avgVal * 0.3})`;
     ctx.lineWidth = 1.5;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = `rgba(124, 92, 252, ${0.3 + avgVal * 0.3})`;
+    ctx.shadowBlur = 20 * moodGlow();
+    ctx.shadowColor = `hsla(${ringHue}, ${moodSat()}%, ${moodLit()}%, ${0.3 + avgVal * 0.3})`;
     ctx.stroke();
     ctx.shadowBlur = 0;
 }
@@ -2366,11 +2680,12 @@ function drawParticles(ctx, W, H) {
     const cy = H / 2;
     const avgVal = Array.from(dataArray.slice(0, 48)).reduce((a, b) => a + b, 0) / 48 / 255;
     const bassVal = Array.from(dataArray.slice(0, 8)).reduce((a, b) => a + b, 0) / 8 / 255;
+    const pSpd = (currentVizMood || VIZ_MOOD_THEMES.energetic).pSpeed;
 
-    const spawnCount = Math.floor(avgVal * 4);
+    const spawnCount = Math.floor(avgVal * 4 * moodInt());
     for (let i = 0; i < spawnCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 1 + Math.random() * 3 + bassVal * 3;
+        const speed = (1 + Math.random() * 3 + bassVal * 3) * pSpd;
         vizParticles.push({
             x: cx, y: cy,
             vx: Math.cos(angle) * speed,
@@ -2378,7 +2693,7 @@ function drawParticles(ctx, W, H) {
             life: 1.0,
             decay: 0.008 + Math.random() * 0.015,
             size: 2 + Math.random() * 3 + avgVal * 3,
-            hue: 240 + Math.random() * 100
+            hue: moodHue(Math.random())
         });
     }
 
@@ -2397,9 +2712,9 @@ function drawParticles(ctx, W, H) {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${p.life * 0.7})`;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = `hsla(${p.hue}, 80%, 60%, ${p.life * 0.4})`;
+        ctx.fillStyle = `hsla(${p.hue}, ${moodSat()}%, ${moodLit()+5}%, ${p.life * 0.7})`;
+        ctx.shadowBlur = 10 * moodGlow();
+        ctx.shadowColor = `hsla(${p.hue}, ${moodSat()}%, ${moodLit()}%, ${p.life * 0.4})`;
         ctx.fill();
     }
 
@@ -2421,16 +2736,16 @@ function drawPulse(ctx, W, H) {
         bands[b] = sum / bandSize / 255;
     }
 
-    const hues = [280, 300, 320, 340];
+    const hues = [moodHue(0), moodHue(0.25), moodHue(0.5), moodHue(0.75)];
     const radii = [0.9, 0.7, 0.5, 0.3];
 
     for (let b = 0; b < 4; b++) {
-        const r = maxR * radii[b] * (0.6 + bands[b] * 0.5);
+        const r = maxR * radii[b] * (0.6 + bands[b] * 0.5 * moodInt());
         const alpha = 0.15 + bands[b] * 0.25;
 
         const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
-        grad.addColorStop(0, `hsla(${hues[b]}, 80%, 60%, ${alpha})`);
-        grad.addColorStop(1, `hsla(${hues[b]}, 80%, 40%, 0)`);
+        grad.addColorStop(0, `hsla(${hues[b]}, ${moodSat()}%, ${moodLit()}%, ${alpha})`);
+        grad.addColorStop(1, `hsla(${hues[b]}, ${moodSat()}%, ${moodLit()-20}%, 0)`);
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.fillStyle = grad;
@@ -2438,12 +2753,295 @@ function drawPulse(ctx, W, H) {
 
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = `hsla(${hues[b]}, 80%, 65%, ${alpha + 0.1})`;
+        ctx.strokeStyle = `hsla(${hues[b]}, ${moodSat()}%, ${moodLit()+5}%, ${alpha + 0.1})`;
         ctx.lineWidth = 1.5 + bands[b] * 2;
-        ctx.shadowBlur = 15 + bands[b] * 20;
-        ctx.shadowColor = `hsla(${hues[b]}, 80%, 60%, 0.4)`;
+        ctx.shadowBlur = (15 + bands[b] * 20) * moodGlow();
+        ctx.shadowColor = `hsla(${hues[b]}, ${moodSat()}%, ${moodLit()}%, 0.4)`;
         ctx.stroke();
     }
+    ctx.shadowBlur = 0;
+}
+
+// --- Aurora (オーロラ) ---
+let auroraTime = 0;
+function drawAurora(ctx, W, H) {
+    auroraTime += 0.008;
+    const avgVal = Array.from(dataArray.slice(0, 48)).reduce((a, b) => a + b, 0) / 48 / 255;
+    const layers = 5;
+
+    for (let l = 0; l < layers; l++) {
+        const phase = auroraTime + l * 0.7;
+        const yBase = H * (0.25 + l * 0.12);
+        const hue = moodHue((l / layers + auroraTime * 0.05) % 1);
+        const alpha = (0.08 + avgVal * 0.15) * moodInt();
+
+        ctx.beginPath();
+        ctx.moveTo(0, H);
+        for (let x = 0; x <= W; x += 4) {
+            const wave1 = Math.sin(x * 0.005 + phase) * H * 0.08;
+            const wave2 = Math.sin(x * 0.012 + phase * 1.3) * H * 0.04;
+            const wave3 = Math.sin(x * 0.003 + phase * 0.7) * H * 0.06 * avgVal;
+            const y = yBase + wave1 + wave2 + wave3;
+            ctx.lineTo(x, y);
+        }
+        ctx.lineTo(W, H);
+        ctx.closePath();
+
+        const grad = ctx.createLinearGradient(0, yBase - H * 0.15, 0, yBase + H * 0.25);
+        grad.addColorStop(0, `hsla(${hue}, ${moodSat()}%, ${moodLit()+10}%, 0)`);
+        grad.addColorStop(0.3, `hsla(${hue}, ${moodSat()}%, ${moodLit()+10}%, ${alpha})`);
+        grad.addColorStop(0.6, `hsla(${hue + 30}, ${moodSat()}%, ${moodLit()}%, ${alpha * 0.6})`);
+        grad.addColorStop(1, `hsla(${hue}, ${moodSat()}%, ${moodLit()}%, 0)`);
+        ctx.fillStyle = grad;
+        ctx.fill();
+    }
+}
+
+// --- Fireworks (花火) ---
+let fwBursts = [];
+function drawFireworks(ctx, W, H) {
+    const bassVal = Array.from(dataArray.slice(0, 8)).reduce((a, b) => a + b, 0) / 8 / 255;
+    const avgVal = Array.from(dataArray.slice(0, 48)).reduce((a, b) => a + b, 0) / 48 / 255;
+
+    // bassが閾値超えで打ち上げ
+    if (bassVal > 0.55 && fwBursts.length < 6 && Math.random() < 0.3 * moodInt()) {
+        const bx = W * (0.15 + Math.random() * 0.7);
+        const by = H * (0.15 + Math.random() * 0.4);
+        const count = 30 + Math.floor(Math.random() * 30);
+        const burstHue = moodHue(Math.random());
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = (2 + Math.random() * 4) * (currentVizMood || VIZ_MOOD_THEMES.energetic).pSpeed;
+            particles.push({
+                x: bx, y: by,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1,
+                life: 1.0,
+                decay: 0.012 + Math.random() * 0.01,
+                size: 2 + Math.random() * 2.5,
+                hue: burstHue + (Math.random() - 0.5) * 30,
+                trail: [],
+            });
+        }
+        fwBursts.push(particles);
+    }
+
+    // 描画+更新
+    for (let bi = fwBursts.length - 1; bi >= 0; bi--) {
+        const particles = fwBursts[bi];
+        let allDead = true;
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.trail.push({ x: p.x, y: p.y, life: p.life });
+            if (p.trail.length > 5) p.trail.shift();
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.04; // gravity
+            p.vx *= 0.98;
+            p.vy *= 0.98;
+            p.life -= p.decay;
+
+            if (p.life <= 0) { particles.splice(i, 1); continue; }
+            allDead = false;
+
+            // trail
+            for (let t = 0; t < p.trail.length; t++) {
+                const tr = p.trail[t];
+                const ta = (t / p.trail.length) * p.life * 0.3;
+                ctx.beginPath();
+                ctx.arc(tr.x, tr.y, p.size * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${p.hue}, ${moodSat()}%, ${moodLit()}%, ${ta})`;
+                ctx.fill();
+            }
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${p.hue}, ${moodSat()}%, ${moodLit()+15}%, ${p.life * 0.8})`;
+            ctx.shadowBlur = 12 * moodGlow();
+            ctx.shadowColor = `hsla(${p.hue}, ${moodSat()}%, ${moodLit()+10}%, ${p.life * 0.5})`;
+            ctx.fill();
+        }
+        if (allDead) fwBursts.splice(bi, 1);
+    }
+    ctx.shadowBlur = 0;
+}
+
+// --- Matrix / Glitch (マトリックス) ---
+let matrixDrops = [];
+function drawMatrix(ctx, W, H) {
+    const avgVal = Array.from(dataArray.slice(0, 48)).reduce((a, b) => a + b, 0) / 48 / 255;
+    const colW = 14;
+    const cols = Math.floor(W / colW);
+
+    // 初期化
+    if (matrixDrops.length !== cols) {
+        matrixDrops = [];
+        for (let c = 0; c < cols; c++) {
+            matrixDrops.push({ y: Math.random() * H, speed: 2 + Math.random() * 4 });
+        }
+    }
+
+    // 半透明黒で軌跡を残す
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.06)';
+    ctx.fillRect(0, 0, W, H);
+
+    const chars = 'アイウエオカキクケコ01サシスセソタチツテト10';
+    const hue1 = moodHue(0.3);
+    const hue2 = moodHue(0.7);
+
+    for (let c = 0; c < cols; c++) {
+        const d = matrixDrops[c];
+        d.y += d.speed * (0.5 + avgVal * 1.5) * moodInt();
+
+        if (d.y > H + 50) {
+            d.y = -20;
+            d.speed = 2 + Math.random() * 4;
+        }
+
+        const ch = chars[Math.floor(Math.random() * chars.length)];
+        const hue = c % 2 === 0 ? hue1 : hue2;
+        const bright = moodLit() + avgVal * 20;
+
+        ctx.font = '13px monospace';
+        ctx.fillStyle = `hsla(${hue}, ${moodSat()}%, ${bright}%, ${0.7 + avgVal * 0.3})`;
+        ctx.shadowBlur = 6 * moodGlow();
+        ctx.shadowColor = `hsla(${hue}, ${moodSat()}%, ${bright}%, 0.5)`;
+        ctx.fillText(ch, c * colW, d.y);
+
+        // 上部の残像
+        for (let t = 1; t <= 6; t++) {
+            const ty = d.y - t * 16;
+            if (ty < 0) break;
+            const tc = chars[Math.floor(Math.random() * chars.length)];
+            ctx.fillStyle = `hsla(${hue}, ${moodSat()}%, ${bright}%, ${0.15 - t * 0.02})`;
+            ctx.shadowBlur = 0;
+            ctx.fillText(tc, c * colW, ty);
+        }
+    }
+    ctx.shadowBlur = 0;
+}
+
+// --- Orbit (軌道) ---
+let orbitTime = 0;
+let orbitBodies = null;
+function drawOrbit(ctx, W, H) {
+    orbitTime += 0.012;
+    const cx = W / 2;
+    const cy = H / 2;
+    const avgVal = Array.from(dataArray.slice(0, 48)).reduce((a, b) => a + b, 0) / 48 / 255;
+
+    if (!orbitBodies) {
+        orbitBodies = [];
+        for (let i = 0; i < 8; i++) {
+            orbitBodies.push({
+                radius: 60 + i * 28,
+                speed: (0.3 + Math.random() * 0.5) * (i % 2 === 0 ? 1 : -1),
+                size: 4 + Math.random() * 5,
+                phase: Math.random() * Math.PI * 2,
+                hueT: i / 8,
+            });
+        }
+    }
+
+    // 軌道線
+    for (const b of orbitBodies) {
+        const r = b.radius * (0.85 + avgVal * 0.25) * moodInt();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `hsla(${moodHue(b.hueT)}, ${moodSat()}%, ${moodLit()}%, 0.08)`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    // 球体
+    for (const b of orbitBodies) {
+        const r = b.radius * (0.85 + avgVal * 0.25) * moodInt();
+        const angle = orbitTime * b.speed + b.phase;
+        const bx = cx + Math.cos(angle) * r;
+        const by = cy + Math.sin(angle) * r * 0.6; // 楕円
+        const sz = b.size * (0.8 + avgVal * 0.5);
+        const hue = moodHue(b.hueT);
+
+        // glow
+        const grad = ctx.createRadialGradient(bx, by, 0, bx, by, sz * 3);
+        grad.addColorStop(0, `hsla(${hue}, ${moodSat()}%, ${moodLit()+15}%, ${0.4 + avgVal * 0.3})`);
+        grad.addColorStop(1, `hsla(${hue}, ${moodSat()}%, ${moodLit()}%, 0)`);
+        ctx.beginPath();
+        ctx.arc(bx, by, sz * 3, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // core
+        ctx.beginPath();
+        ctx.arc(bx, by, sz, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue}, ${moodSat()}%, ${moodLit()+20}%, 0.9)`;
+        ctx.shadowBlur = 15 * moodGlow();
+        ctx.shadowColor = `hsla(${hue}, ${moodSat()}%, ${moodLit()+10}%, 0.6)`;
+        ctx.fill();
+    }
+
+    // 中心コア
+    const coreSize = 8 + avgVal * 12;
+    const coreHue = moodHue(0.5);
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreSize * 2);
+    coreGrad.addColorStop(0, `hsla(${coreHue}, ${moodSat()}%, ${moodLit()+20}%, 0.6)`);
+    coreGrad.addColorStop(1, `hsla(${coreHue}, ${moodSat()}%, ${moodLit()}%, 0)`);
+    ctx.beginPath();
+    ctx.arc(cx, cy, coreSize * 2, 0, Math.PI * 2);
+    ctx.fillStyle = coreGrad;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
+// --- Fire (炎) ---
+let fireParticles = [];
+function drawFire(ctx, W, H) {
+    const avgVal = Array.from(dataArray.slice(0, 48)).reduce((a, b) => a + b, 0) / 48 / 255;
+    const bassVal = Array.from(dataArray.slice(0, 8)).reduce((a, b) => a + b, 0) / 8 / 255;
+    const pSpd = (currentVizMood || VIZ_MOOD_THEMES.energetic).pSpeed;
+
+    // 下部から炎パーティクル発生
+    const spawnCount = Math.floor(3 + avgVal * 8 * moodInt());
+    for (let i = 0; i < spawnCount; i++) {
+        const sx = W * 0.2 + Math.random() * W * 0.6;
+        fireParticles.push({
+            x: sx,
+            y: H + 5,
+            vx: (Math.random() - 0.5) * 2,
+            vy: -(2 + Math.random() * 3 + bassVal * 3) * pSpd,
+            life: 1.0,
+            decay: 0.008 + Math.random() * 0.012,
+            size: 4 + Math.random() * 6 + avgVal * 4,
+            hueT: Math.random(), // 0=core, 1=tip
+        });
+    }
+
+    for (let i = fireParticles.length - 1; i >= 0; i--) {
+        const p = fireParticles[i];
+        p.x += p.vx + (Math.random() - 0.5) * 0.8;
+        p.y += p.vy;
+        p.vy *= 0.99;
+        p.vx *= 0.98;
+        p.life -= p.decay;
+
+        if (p.life <= 0 || p.y < -20) { fireParticles.splice(i, 1); continue; }
+
+        // 色：生存率で変化（下部=明るいコア、上部=暗い先端）
+        const lifeT = 1 - p.life; // 0=born, 1=dying
+        const hue = moodHue(lifeT * 0.7 + p.hueT * 0.3);
+        const lit = moodLit() + 20 * p.life - 10 * lifeT;
+        const alpha = p.life * 0.6;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * (0.3 + p.life * 0.7), 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue}, ${moodSat()}%, ${Math.max(lit, 20)}%, ${alpha})`;
+        ctx.shadowBlur = (8 + p.life * 12) * moodGlow();
+        ctx.shadowColor = `hsla(${hue}, ${moodSat()}%, ${moodLit()+10}%, ${alpha * 0.5})`;
+        ctx.fill();
+    }
+
+    if (fireParticles.length > 400) fireParticles.splice(0, fireParticles.length - 400);
     ctx.shadowBlur = 0;
 }
 
@@ -2487,6 +3085,10 @@ function initOverlay() {
                 document.querySelectorAll('.viz-mode-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 if (mode !== 'particles') vizParticles = [];
+                if (mode !== 'fire') fireParticles = [];
+                if (mode !== 'fireworks') fwBursts = [];
+                if (mode !== 'matrix') matrixDrops = [];
+                if (mode !== 'orbit') orbitBodies = null;
             }
         });
     });
@@ -2531,12 +3133,18 @@ function addHistoryEntry(entry) {
 /**
  * 履歴エントリを更新（生成完了時に呼ぶ）
  */
-function updateHistoryEntry(taskId, audioUrls) {
+function updateHistoryEntry(taskId, audioUrls, extra) {
     const history = _getHistoryStore();
     const entry = history.find(h => h.task_id === taskId);
     if (entry) {
-        entry.audio_urls = audioUrls;
-        entry.status = 'completed';
+        if (audioUrls) {
+            entry.audio_urls = audioUrls;
+            entry.status = 'completed';
+        }
+        if (extra) {
+            if (extra.title) entry.title = extra.title;
+            if (extra.lyrics) entry.lyrics = extra.lyrics;
+        }
         _setHistoryStore(history);
     }
     renderHistory();
@@ -2614,6 +3222,7 @@ function renderHistory() {
 
     container.innerHTML = history.map((entry, idx) => {
         const genre = entry.genre || '—';
+        const title = entry.title || '';
         const caption = entry.caption || '';
         const dur = entry.duration ? `${entry.duration}s` : '';
         const ago = entry.created_at ? timeAgo(entry.created_at) : '';
@@ -2626,11 +3235,12 @@ function renderHistory() {
             : '';
 
         const audioUrl = isReady ? entry.audio_urls[0] : '';
+        const displayName = title || caption;
 
         return `<div class="history-item${isReady ? ' ready' : ''}" data-index="${idx}">
             <div class="history-info">
                 <span class="history-genre">${escapeHtml(genre)}</span>
-                <span class="history-caption">${escapeHtml(caption)}</span>
+                <span class="history-title">${escapeHtml(displayName)}</span>
                 <span class="history-meta">${dur} · ${ago}</span>
                 ${statusBadge}
             </div>
@@ -2664,8 +3274,8 @@ function playFromHistory(idx) {
     const entry = history[idx];
     if (!entry || !entry.audio_urls || entry.audio_urls.length === 0) return;
 
-    currentResults = entry.audio_urls.map(url => ({ url }));
-    currentLyrics = '';
+    currentResults = entry.audio_urls.map(url => ({ url, lyrics: entry.lyrics || '' }));
+    currentLyrics = entry.lyrics || '';
     showInlinePlayer();
     playSimpleTrack(0);
 
@@ -2673,6 +3283,11 @@ function playFromHistory(idx) {
     if (entry.genre) {
         currentOverlayGenre = entry.genre;
     }
+    // 曲名を復元
+    setSongTitle(entry.title || '');
+
+    // ビジュアライザー雰囲気を推定（履歴再生）
+    fetchVizMood(entry.lyrics || '', '', entry.genre || '', '');
 }
 
 /**
@@ -3077,9 +3692,9 @@ async function jukeboxGenerateOne() {
                         }
                         // 履歴を完了に更新（JUKEBOX）
                         const audioUrls = statusResult.results.map(r => convertAudioUrl(r.url));
-                        updateHistoryEntry(taskId, audioUrls);
+                        updateHistoryEntry(taskId, audioUrls, { lyrics: effectiveLyrics });
                         jukeboxGenerating = false;
-                        return { audioUrl: url, genre: genre.name, lyrics: effectiveLyrics };
+                        return { audioUrl: url, genre: genre.name, lyrics: effectiveLyrics, taskId: taskId };
                     }
                     throw new Error('Empty result');
                 } else if (statusResult.status === 2) {
@@ -3120,30 +3735,30 @@ function jukeboxPlayTrack(result) {
     currentTrackIndex = 0;
     currentLyrics = result.lyrics;
 
-    // JUKEBOX: ユーザー未選択ならランダムにアニメーションモードを切替
+    // JUKEBOX: vizMoodのリセット（fetchVizMoodで上書きされる）
     if (!vizModeUserSelected) {
-        const modes = ['spectrum', 'wave', 'ring', 'particles', 'pulse'];
-        vizMode = modes[Math.floor(Math.random() * modes.length)];
+        // 一旦デフォルトでリセット、mood推定後に自動切替
         vizParticles = [];
-        document.querySelectorAll('.viz-mode-btn').forEach(b => {
-            b.classList.toggle('active', b.dataset.mode === vizMode);
-        });
+        fireParticles = [];
+        fwBursts = [];
+        matrixDrops = [];
+        orbitBodies = null;
     }
 
     currentOverlayGenre = result.genre;
     updateOverlayBackground(result.genre);
 
-    const lyricsEl = document.getElementById('overlay-lyrics');
-    if (lyricsEl) {
-        if (result.lyrics && result.lyrics !== '[inst]') {
-            lyricsEl.textContent = result.lyrics
-                .replace(/\[(verse|chorus|bridge|outro|intro|hook|pre-chorus|interlude|rap|spoken)\d*\]/gi, '')
-                .replace(/^\s*\n/gm, '\n')
-                .trim();
-        } else {
-            lyricsEl.textContent = '';
-        }
+    if (result.lyrics && result.lyrics !== '[inst]') {
+        showStaticLyrics(result.lyrics);
+        fetchLrc(result.audioUrl, result.lyrics);
+        fetchSongTitle(result.lyrics, result.genre, getSelectedLanguageName(), '', result.taskId || '');
+    } else {
+        clearTelop();
+        setSongTitle('');
     }
+
+    // ビジュアライザー雰囲気を非同期推定（JUKEBOX）
+    fetchVizMood(result.lyrics || '', '', result.genre || '', '');
 
     updateJukeboxNowPlaying(`♪ ${result.genre}`, jukeboxTrackCount);
     hideSimpleProgress();

@@ -15,3 +15,7 @@ itsdangerous>=2.0.0
 # ローカルLLMフォールバック（外部LLM接続不可時に使用）
 llama-cpp-python>=0.3.0
 huggingface_hub>=0.20.0
+
+# 歌詞テロップ（エネルギーエンベロープ解析）
+numpy>=1.24.0
+soundfile>=0.12.0

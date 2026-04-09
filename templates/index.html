@@ -212,20 +212,22 @@
 
         <!-- おまかせ生成（Simple Mode） -->
         <section class="simple-section normal-mode-section omakase-section" id="omakase-section">
-            <label class="section-label" data-i18n="label_omakase">🪄 おまかせ生成</label>
-            <div class="omakase-row">
-                <input type="text" id="omakase-input" class="simple-input omakase-input"
-                       data-i18n-placeholder="placeholder_omakase"
-                       placeholder="例: 夏の海辺で聴きたい爽やかなポップ">
-                <button class="omakase-random-btn" id="omakase-random-btn" onclick="fillRandomSample()" title="ランダム">🎲 <span data-i18n="btn_random">ランダム</span></button>
-            </div>
+            <details class="collapsible-section">
+                <summary class="collapsible-summary section-label" data-i18n="label_omakase">🪄 おまかせ生成</summary>
+                <div class="omakase-row">
+                    <input type="text" id="omakase-input" class="simple-input omakase-input"
+                           data-i18n-placeholder="placeholder_omakase"
+                           placeholder="例: 夏の海辺で聴きたい爽やかなポップ">
+                    <button class="omakase-random-btn" id="omakase-random-btn" onclick="fillRandomSample()" title="ランダム">🎲 <span data-i18n="btn_random">ランダム</span></button>
+                </div>
+            </details>
         </section>
 
         <!-- 生成コントロール -->
         <section class="simple-section control-bar">
             <div class="control-row">
                 <div class="control-item">
-                    <label data-i18n="label_duration">長さ</label>
+                    <label data-i18n="label_duration">曲長</label>
                     <select class="simple-select" id="simple-duration">
                         <option value="auto" selected data-i18n="dur_auto">自動（AI推定）</option>
                         <option value="30" data-i18n="dur_30">30秒</option>
@@ -345,6 +347,7 @@
                     <div class="options-row">
                         <span class="options-label" data-i18n="label_mood">ムード：</span>
                         <div class="mood-chips" id="mood-chips">
+                            <button class="mood-chip chip-clear" onclick="clearMoodChips()" title="クリア">✕</button>
                             <button class="mood-chip" data-mood="bright and happy" data-i18n="mood_happy">😊 明るい</button>
                             <button class="mood-chip" data-mood="bittersweet and sad" data-i18n="mood_sad">😢 切ない</button>
                             <button class="mood-chip" data-mood="intense and powerful" data-i18n="mood_intense">🔥 激しい</button>
@@ -360,6 +363,7 @@
                     <div class="options-row">
                         <span class="options-label" data-i18n="label_vocal">ボーカル：</span>
                         <div class="mood-chips" id="vocal-chips">
+                            <button class="mood-chip chip-clear" onclick="clearVocalChips()" title="クリア">✕</button>
                             <button class="mood-chip" data-vocal="female vocal" data-i18n="vocal_female">👩 女声</button>
                             <button class="mood-chip" data-vocal="male vocal" data-i18n="vocal_male">👨 男声</button>
                             <button class="mood-chip" data-vocal="powerful vocal" data-i18n="vocal_powerful">🎤 力強い</button>
@@ -457,7 +461,10 @@
         <div class="overlay-bg-image" id="overlay-bg-image"></div>
         <canvas id="circle-canvas"></canvas>
         <div class="overlay-genre-name" id="overlay-genre-name"></div>
-        <div class="overlay-lyrics" id="overlay-lyrics"></div>
+        <div class="overlay-song-title" id="overlay-song-title"></div>
+        <div class="overlay-lyrics" id="overlay-lyrics">
+            <div class="telop-container" id="telop-container"></div>
+        </div>
         <div class="overlay-controls" id="overlay-controls">
             <div class="overlay-tracks" id="overlay-tracks"></div>
             <div class="viz-mode-selector" id="viz-mode-selector">
@@ -466,6 +473,12 @@
                 <button class="viz-mode-btn" data-mode="ring" title="リング">○</button>
                 <button class="viz-mode-btn" data-mode="particles" title="パーティクル">✧</button>
                 <button class="viz-mode-btn" data-mode="pulse" title="パルス">◉</button>
+                <span class="viz-sep">│</span>
+                <button class="viz-mode-btn" data-mode="aurora" title="オーロラ">🌊</button>
+                <button class="viz-mode-btn" data-mode="fireworks" title="花火">🎆</button>
+                <button class="viz-mode-btn" data-mode="matrix" title="マトリックス">💻</button>
+                <button class="viz-mode-btn" data-mode="orbit" title="軌道">🪐</button>
+                <button class="viz-mode-btn" data-mode="fire" title="炎">🔥</button>
             </div>
             <a class="overlay-dl-btn" id="overlay-dl-btn" href="#" download>⬇️</a>
             <input type="range" class="overlay-seek" id="overlay-seek" min="0" max="100" value="0">

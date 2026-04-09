@@ -386,7 +386,7 @@ body::after {
 .control-row {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     flex-wrap: wrap;
     overflow-x: hidden;
 }
@@ -394,8 +394,8 @@ body::after {
 .control-item {
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-size: 0.85rem;
+    gap: 4px;
+    font-size: 0.8rem;
     flex-shrink: 0;
 }
 
@@ -434,12 +434,12 @@ body::after {
 }
 
 .simple-select {
-    padding: 5px 10px;
+    padding: 4px 8px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background: var(--bg-elevated);
     color: var(--text-primary);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -448,9 +448,9 @@ body::after {
     -webkit-appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 8px center;
-    padding-right: 24px;
-    min-width: 80px;
+    background-position: right 6px center;
+    padding-right: 20px;
+    min-width: 60px;
 }
 /* STEP / Shift / Sampler: 幅を抑えて横一列に収める */
 #simple-steps,
@@ -486,6 +486,18 @@ body::after {
     font-size: 0.75rem;
     padding: 3px 20px 3px 6px;
 }
+#simple-batch {
+    min-width: 40px;
+    max-width: 58px;
+    font-size: 0.75rem;
+    padding: 3px 20px 3px 6px;
+}
+#simple-ace-model {
+    min-width: 60px;
+    max-width: 120px;
+    font-size: 0.75rem;
+    padding: 3px 20px 3px 6px;
+}
 
 .inst-check {
     display: flex;
@@ -502,6 +514,21 @@ body::after {
     width: 15px;
     height: 15px;
     cursor: pointer;
+}
+
+/* Chip clear button */
+.chip-clear {
+    min-width: 28px;
+    padding: 3px 7px !important;
+    font-size: 0.75rem !important;
+    color: var(--text-dim) !important;
+    border-color: var(--border) !important;
+    background: transparent !important;
+}
+.chip-clear:hover {
+    color: var(--text-primary) !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    background: rgba(239, 68, 68, 0.1) !important;
 }
 
 /* ---------- Status & Progress ---------- */
@@ -784,6 +811,26 @@ body::after {
 }
 .overlay-genre-name:empty { display: none; }
 
+/* --- Overlay Song Title --- */
+.overlay-song-title {
+    position: absolute;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 16px rgba(139, 92, 246, 0.4), 0 2px 8px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 80%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.overlay-song-title:empty { display: none; }
+
 .overlay-controls {
     position: absolute;
     bottom: 44px;
@@ -867,6 +914,14 @@ body::after {
     background: var(--primary);
     box-shadow: 0 0 8px var(--primary-glow);
 }
+.viz-sep {
+    color: rgba(255,255,255,0.15);
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    padding: 0 1px;
+    user-select: none;
+}
 
 .overlay-hint {
     z-index: 1001;
@@ -903,31 +958,72 @@ body::after {
     letter-spacing: 0.05em;
 }
 
-/* ---------- Overlay Lyrics ---------- */
+/* ---------- Overlay Lyrics / Telop ---------- */
 .overlay-lyrics {
     position: absolute;
-    top: 65px;
+    top: 50px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1001;
-    max-width: 70%;
-    max-height: 30vh;
-    overflow-y: auto;
+    width: 92%;
+    max-width: 640px;
+    height: 40vh;
+    overflow: hidden;
     text-align: center;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.82rem;
-    line-height: 1.9;
-    letter-spacing: 0.03em;
     pointer-events: none;
-    white-space: pre-line;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    mask-image: linear-gradient(to bottom, transparent, black 8%, black 85%, transparent);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, black 8%, black 85%, transparent);
 }
-.overlay-lyrics::-webkit-scrollbar { display: none; }
 .overlay-lyrics:empty { display: none; }
+
+/* テロップコンテナ — translateY でスクロール */
+.telop-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* テロップ行（通常: 暗い） */
+.telop-line {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.15em 0.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 0.88rem;
+    line-height: 2.0;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.35s ease, opacity 0.35s ease, text-shadow 0.35s ease;
+    opacity: 0.35;
+}
+
+/* 静的歌詞表示（LRC取得前 / フォールバック）*/
+.telop-line.telop-static {
+    color: rgba(255, 255, 255, 0.6);
+    opacity: 0.6;
+}
+
+/* ハイライト中の3行 */
+.telop-line.active {
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 500;
+    opacity: 1;
+    text-shadow: 0 0 18px rgba(139, 92, 246, 0.5), 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+/* ハイライトの前後1行（明るめの過渡） */
+.telop-line.near {
+    color: rgba(255, 255, 255, 0.85);
+    opacity: 0.85;
+}
+
+/* フェードマスク無効化 */
 
 /* ---------- Spinner ---------- */
 .spinner {
@@ -1693,6 +1789,16 @@ body::after {
 .history-caption {
     font-size: 0.78rem;
     color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+.history-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

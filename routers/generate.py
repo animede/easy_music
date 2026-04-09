@@ -14,6 +14,7 @@ from services.ace_step_client import ace_step_client, TaskResult, SUPPORTED_LANG
 from config import settings
 
 router = APIRouter(prefix="/api", tags=["generate"])
+logger = logging.getLogger("uvicorn.error")
 
 # SFT モデルのバッチサイズ上限（VRAM 安全対策: CFGありで実効バッチ×2のため）
 SFT_MAX_BATCH_SIZE = 2
@@ -736,6 +737,82 @@ async def generate_repaint(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# LRC（歌詞タイミング）生成
+# ---------------------------------------------------------------------------
+_lrc_cache: Dict[str, Any] = {}   # key = audio_url → LRC JSON
+
+
+@router.post("/lrc")
+async def generate_lrc_endpoint(payload: dict):
+    """
+    音声 URL ＋ 歌詞テキストから LRC タイムスタンプを生成する。
+
+    Request body:
+        { "audio_url": "/v1/audio?path=...", "lyrics": "..." }
+    Returns:
+        { "lrc": [ {"time": 12.3, "text": "...", "section": "verse"}, ... ] }
+        歌詞なし / 解析不可: { "lrc": null }
+    """
+    audio_url = payload.get("audio_url", "")
+    lyrics = payload.get("lyrics", "")
+
+    if not audio_url or not lyrics or lyrics.strip() == "[inst]":
+        return {"lrc": None}
+
+    # キャッシュ確認
+    if audio_url in _lrc_cache:
+        return {"lrc": _lrc_cache[audio_url]}
+
+    # 音声ダウンロード（ACE-Step サーバから）
+    # audio_url のパターン:
+    #   "/v1/audio?path=..."                 → ACE-Step 直接パス
+    #   "/api/audio?path=..."                → 自サーバプロキシ URL → ACE-Step に変換
+    #   "http://192.168.x.x:8001/v1/audio?path=..." → 完全 URL
+    if audio_url.startswith("/api/audio"):
+        # 自サーバプロキシ URL → ACE-Step URL に変換
+        import urllib.parse
+        parsed = urllib.parse.urlparse(audio_url)
+        qs = urllib.parse.parse_qs(parsed.query)
+        ace_path = qs.get("path", [""])[0]
+        if ace_path:
+            full_url = f"{settings.ace_step_api_url}/v1/audio?path={ace_path}"
+        else:
+            full_url = f"{settings.ace_step_api_url}{audio_url}"
+    elif audio_url.startswith("/"):
+        full_url = f"{settings.ace_step_api_url}{audio_url}"
+    else:
+        full_url = audio_url
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(full_url, timeout=60.0)
+            resp.raise_for_status()
+            audio_bytes = resp.content
+    except Exception as e:
+        logger.warning("LRC: 音声ダウンロード失敗: %s", e)
+        return {"lrc": None}
+
+    # エネルギー解析 + LRC 生成（CPU 処理なのでブロッキングだが <1秒）
+    from services.lrc_service import generate_lrc, lrc_lines_to_json
+
+    loop = asyncio.get_event_loop()
+    try:
+        lrc_lines = await loop.run_in_executor(
+            None, generate_lrc, audio_bytes, lyrics
+        )
+    except Exception as e:
+        logger.warning("LRC: 解析失敗: %s", e)
+        return {"lrc": None}
+
+    if lrc_lines is None:
+        _lrc_cache[audio_url] = None
+        return {"lrc": None}
+
+    result = lrc_lines_to_json(lrc_lines)
+    _lrc_cache[audio_url] = result
+    return {"lrc": result}
 
 
 @router.get("/audio")

@@ -88,6 +88,21 @@ class FullGenerateResponse(BaseModel):
     error: Optional[str] = None
 
 
+class TitleGenerateRequest(BaseModel):
+    """曲名生成リクエスト"""
+    lyrics: str = Field(..., description="歌詞")
+    genre: str = Field(default="", description="ジャンル")
+    language: str = Field(default="Japanese", description="言語")
+    theme: str = Field(default="", description="テーマ（参考情報）")
+
+
+class TitleGenerateResponse(BaseModel):
+    """曲名生成レスポンス"""
+    success: bool
+    title: str = ""
+    error: Optional[str] = None
+
+
 class ThemeGenerateRequest(BaseModel):
     """テーマ生成リクエスト"""
     genre: str = Field(default="", description="ジャンル")
@@ -101,9 +116,51 @@ class ThemeGenerateResponse(BaseModel):
     error: Optional[str] = None
 
 
+class VizMoodRequest(BaseModel):
+    """ビジュアライザー雰囲気推定リクエスト"""
+    lyrics: str = Field(default="", description="歌詞")
+    caption: str = Field(default="", description="キャプション")
+    genre: str = Field(default="", description="ジャンル")
+    omakase_query: str = Field(default="", description="おまかせクエリ")
+
+
 # =============================================================================
 # Endpoints
 # =============================================================================
+
+
+@router.post("/title", response_model=TitleGenerateResponse)
+async def generate_title(request: TitleGenerateRequest):
+    """
+    歌詞の雰囲気から曲名を自動生成
+    """
+    try:
+        title = await llm_service.generate_title(
+            lyrics=request.lyrics,
+            genre=request.genre,
+            language=request.language,
+            theme=request.theme
+        )
+        return TitleGenerateResponse(success=True, title=title)
+    except Exception as e:
+        return TitleGenerateResponse(success=False, error=str(e))
+
+
+@router.post("/viz_mood")
+async def generate_viz_mood(request: VizMoodRequest):
+    """
+    歌詞・キャプション・ジャンルからビジュアライザー用の雰囲気IDを推定
+    """
+    try:
+        mood = await llm_service.generate_viz_mood(
+            lyrics=request.lyrics,
+            caption=request.caption,
+            genre=request.genre,
+            omakase_query=request.omakase_query,
+        )
+        return {"success": True, "mood": mood}
+    except Exception as e:
+        return {"success": False, "mood": "energetic", "error": str(e)}
 
 
 @router.post("/theme", response_model=ThemeGenerateResponse)
