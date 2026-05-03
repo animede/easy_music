@@ -14,11 +14,24 @@
 - 🧠 **Thinking モード** — ON/OFFでキャプション生成スタイルを切替
 - 🎚️ **STEP選択** — 8/20/50/80/100ステップで品質と速度を調整
 - 🔊 **インラインプレーヤー** — 10種のビジュアライザー + LLMムード連動配色
+- 🖼️ **背景画像自動生成** — 音楽に合う背景画像を別サーバで生成し、再生時に自動表示
 - 🔇 **無音音楽自動検出** — Web Audio APIでRMS/ピーク値を解析、無音生成を自動検出
 - 📋 **履歴機能** — 直近10件の生成音楽をリスト表示、選択再生・ダウンロード（ブラウザsessionStorage）
 - 🌐 **日英切替** — ワンクリックでUI言語切替
 
 ## v1.7.0 新機能
+
+### 🖼️ 音楽連動の背景画像生成
+
+音楽生成とは別サーバの画像生成APIを使い、曲のテーマ・歌詞・キャプション・ジャンルから再生用背景画像を自動生成します。
+
+- **並列生成**: 音楽タスク作成直後に画像生成も開始し、待ち時間を短縮
+- **再生時反映**: 画像生成が先に終わっていれば再生開始と同時に切替
+- **後追い反映**: 音楽再生開始後に画像が完成した場合も、自動で差し替え
+- **ジャンル反映**: `City Pop`、`Jazz`、`Rock` などはジャンルごとの視覚ヒントを画像プロンプトへ反映
+- **履歴再利用**: 生成済み画像はキャッシュされ、履歴再生でも再利用
+
+画像プロンプトは `momo_song-v3` の方式を参考に、LLMでシーン記述を生成した後に画像サーバへ送信します。
 
 ### 🎨 ビジュアライザームード（自動配色）
 
@@ -118,6 +131,7 @@ LLMが歌詞から曲名を推定し、オーバーレイと履歴に表示。
 - Python 3.10+
 - ACE-Step 1.5 APIサーバー（別途起動）
 - LLM APIサーバー（オプション、OpenAI互換）
+- 画像生成APIサーバー（オプション、背景画像生成用）
 
 ### インストール
 
@@ -141,6 +155,9 @@ pip install -r requirements.txt
 
 # LLM APIを指定
 ./start.sh --llm-url http://YOUR_LLM_HOST:11434/v1
+
+# 画像生成APIを指定
+./start.sh --img-url http://YOUR_IMAGE_HOST:64656
 
 # ポート変更
 ./start.sh --port 9000
@@ -223,6 +240,9 @@ ACESTEP_CONFIG_PATH=acestep-v15-base ./run_api_server_lowvram.sh
 
 # ACE-Step APIを指定
 ./start_server.sh --ace-url http://YOUR_ACE_HOST:8001
+
+# 画像生成APIも指定
+./start_server.sh --ace-url http://YOUR_ACE_HOST:8001 --img-url http://YOUR_IMAGE_HOST:64656
 ```
 
 | 項目 | WEBアプリ版 (`start.sh`) | サーバ版 (`start_server.sh`) |
@@ -240,9 +260,23 @@ ACE_STEP_API_URL=http://localhost:8001
 OPENAI_BASE_URL=http://localhost:11434/v1
 OPENAI_API_KEY=YOUR_KEY
 OPENAI_CHAT_MODEL=gemma3:latest
+IMAGE_GENERATION_URL=http://192.168.5.73:64656
 HOST=0.0.0.0
 PORT=8889
 ```
+
+### 背景画像生成サーバー
+
+背景画像機能は `POST /generate/` を持つ画像生成サーバーを使用します。
+
+- デフォルトURL: `http://192.168.5.73:64656`
+- CLI引数:
+	- `--img-url http://HOST:64656`
+	- `--img-host HOST`
+	- `--img-port 64656`
+- 音楽生成とは独立しているため、音楽と画像を並列に生成できます
+
+画像が少し遅れて完成した場合でも、再生中に自動で背景が更新されます。
 
 ## 構成
 

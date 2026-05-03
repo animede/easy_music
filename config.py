@@ -45,6 +45,11 @@ def parse_args():
     parser.add_argument("--llm-port", type=int, default=None, help="LLM APIポート (default: 11434 / Ollama)")
     parser.add_argument("--llm-url", type=str, default=None, help="LLM API URL (例: http://YOUR_LLM_HOST:11434/v1 / Ollama)")
     parser.add_argument("--llm-model", type=str, default=None, help="LLMモデル名")
+
+    # 画像生成API設定
+    parser.add_argument("--img-host", type=str, default=None, help="画像生成APIホスト (default: 192.168.5.73)")
+    parser.add_argument("--img-port", type=int, default=None, help="画像生成APIポート (default: 64656)")
+    parser.add_argument("--img-url", type=str, default=None, help="画像生成API URL (例: http://192.168.5.73:64656)")
     
     # LLMモード
     parser.add_argument("--local-llm", action="store_true", help="外部LLMを使わず内蔵LLM(Qwen3-1.7B)のみ使用")
@@ -73,6 +78,10 @@ class Settings(BaseSettings):
     openai_base_url: str = "http://localhost:11434/v1"
     openai_api_key: str = "YOUR_OPENAI_API_KEY"
     openai_chat_model: str = "gemma3:latest"
+
+    # 画像生成設定
+    image_generation_url: str = "http://192.168.5.73:64656"
+    image_generation_timeout: float = 90.0
     
     # サーバー設定
     host: str = "0.0.0.0"
@@ -131,6 +140,16 @@ class Settings(BaseSettings):
         
         if args.llm_model:
             self.openai_chat_model = args.llm_model
+
+        # 画像生成API設定
+        if args.img_url:
+            self.image_generation_url = args.img_url.rstrip("/")
+        elif args.img_host or args.img_port:
+            from urllib.parse import urlparse
+            parsed = urlparse(self.image_generation_url)
+            host = args.img_host or parsed.hostname or "192.168.5.73"
+            port = args.img_port or parsed.port or 64656
+            self.image_generation_url = f"http://{host}:{port}"
         
         # LLMモード
         if args.local_llm:

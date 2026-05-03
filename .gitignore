@@ -11,6 +11,7 @@ build/
 .idea/
 .vscode/
 *.log
+generated_backgrounds/
 
 # docs — 非公開
 docs/soften_tone.py

@@ -14,11 +14,24 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 - 🧠 **Thinking Mode** — Toggle ON/OFF to switch caption generation style
 - 🎚️ **STEP Selector** — Choose 8/20/50/80/100 steps to balance quality and speed
 - 🔊 **Inline Player** — 10 visualizer modes + LLM mood-adaptive color themes
+- 🖼️ **Auto Background Artwork** — Generates matching background images on a separate server and shows them during playback
 - 🔇 **Silent Audio Detection** — Analyzes RMS/peak via Web Audio API, auto-detects silent output
 - 📋 **History** — Recent 10 generations in a list with playback and download (browser sessionStorage)
 - 🌐 **Bilingual UI** — Japanese / English toggle
 
 ## v1.7.0 New Features
+
+### 🖼️ Music-Synced Background Image Generation
+
+Uses a separate image generation API server to automatically create playback background artwork from the song theme, lyrics, caption, and genre.
+
+- **Parallel generation**: image generation starts immediately after music task creation
+- **Playback-time switch**: if the image is already ready, it appears at the same time playback starts
+- **Late update support**: if the image finishes slightly later, the background updates automatically during playback
+- **Genre-aware prompting**: genres like `City Pop`, `Jazz`, and `Rock` inject visual era/style cues into the image prompt
+- **History reuse**: generated artwork is cached and reused from playback history
+
+The image prompting flow is inspired by `momo_song-v3`: an LLM first builds a scene description, then the image server renders it.
 
 ### 🎨 Visualizer Mood (Auto Color Theming)
 
@@ -118,6 +131,7 @@ All players (inline, overlay, JUKEBOX) feature a volume slider. Click the speake
 - Python 3.10+
 - ACE-Step 1.5 API server (started separately)
 - LLM API server (optional, OpenAI-compatible)
+- Image generation API server (optional, for background artwork)
 
 ### Installation
 
@@ -141,6 +155,9 @@ pip install -r requirements.txt
 
 # Specify LLM API
 ./start.sh --llm-url http://YOUR_LLM_HOST:11434/v1
+
+# Specify image generation API
+./start.sh --img-url http://YOUR_IMAGE_HOST:64656
 
 # Change port
 ./start.sh --port 9000
@@ -223,6 +240,9 @@ History is stored in the browser's sessionStorage (independent per tab).
 
 # Specify ACE-Step API
 ./start_server.sh --ace-url http://YOUR_ACE_HOST:8001
+
+# Specify image generation API too
+./start_server.sh --ace-url http://YOUR_ACE_HOST:8001 --img-url http://YOUR_IMAGE_HOST:64656
 ```
 
 | Feature | Web App (`start.sh`) | Server (`start_server.sh`) |
@@ -238,9 +258,23 @@ ACE_STEP_API_URL=http://localhost:8001
 OPENAI_BASE_URL=http://localhost:11434/v1
 OPENAI_API_KEY=YOUR_KEY
 OPENAI_CHAT_MODEL=gemma3:latest
+IMAGE_GENERATION_URL=http://192.168.5.73:64656
 HOST=0.0.0.0
 PORT=8889
 ```
+
+### Background Image Server
+
+The background artwork feature uses an image generation server that provides `POST /generate/`.
+
+- Default URL: `http://192.168.5.73:64656`
+- CLI options:
+	- `--img-url http://HOST:64656`
+	- `--img-host HOST`
+	- `--img-port 64656`
+- Since the image server is separate from the music server, music and image generation can run in parallel
+
+If image generation finishes slightly later than music generation, the background is still updated automatically during playback.
 
 ## Structure
 

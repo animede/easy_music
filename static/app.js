@@ -428,6 +428,8 @@ let currentResults = [];
 let currentTrackIndex = 0;
 let currentLyrics = '';
 let currentSongTitle = '';
+let currentTaskId = '';
+let currentOverlayBackgroundUrl = '';
 
 // =============================================================================
 // デバッグパネル（タグ・キャプション表示）
@@ -631,6 +633,69 @@ function convertAudioUrl(url) {
         }
     } catch (_) {}
     return url;
+}
+
+function updateMainPlaybackBackground(genreName, imageUrl = '') {
+    const bgEl = document.getElementById('app-playback-bg');
+    if (!bgEl) return;
+
+    const shouldUseGenreFallback = !currentTaskId && !currentOverlayBackgroundUrl && !imageUrl;
+    const effectiveImageUrl = imageUrl || currentOverlayBackgroundUrl || (shouldUseGenreFallback ? getGenreImageUrl(genreName) : '');
+    if (effectiveImageUrl) {
+        bgEl.style.backgroundImage = `url('${effectiveImageUrl}')`;
+        bgEl.classList.add('visible');
+    } else {
+        bgEl.style.backgroundImage = 'none';
+        bgEl.classList.remove('visible');
+    }
+}
+
+function getBackgroundImageSize() {
+    const portrait = window.innerHeight > window.innerWidth;
+    return portrait ? { width: 728, height: 1296 } : { width: 1296, height: 728 };
+}
+
+async function generatePlaybackBackground({
+    taskId,
+    genre = '',
+    theme = '',
+    caption = '',
+    lyrics = '',
+    omakaseQuery = '',
+}) {
+    if (!taskId) return null;
+
+    try {
+        const size = getBackgroundImageSize();
+        const response = await apiRequest('/api/background_image', 'POST', {
+            task_id: taskId,
+            genre,
+            theme,
+            caption,
+            lyrics,
+            omakase_query: omakaseQuery,
+            width: size.width,
+            height: size.height,
+        });
+
+        if (!response.success || !response.image_url) return null;
+
+        updateHistoryEntry(taskId, null, { background_image_url: response.image_url });
+
+        if (currentTaskId === taskId) {
+            currentOverlayBackgroundUrl = response.image_url;
+            currentResults = (currentResults || []).map(result => ({
+                ...result,
+                background_image_url: response.image_url,
+            }));
+            updateOverlayBackground(currentOverlayGenre || genre, response.image_url);
+        }
+
+        return response.image_url;
+    } catch (e) {
+        console.warn('[EasyMusic] Background image generation failed:', e.message || e);
+        return null;
+    }
 }
 
 // =============================================================================
@@ -1223,7 +1288,12 @@ async function generateCover() {
         addHistoryEntry({ task_id: taskId, genre: '🎤 Cover', caption: coverFile.name.substring(0, 60), duration: getSelectedDuration() });
         if (createResult.seed != null) window._lastSeed = createResult.seed;
 
-        await pollTask(taskId);
+        await pollTask(taskId, {
+            genre: '🎤 Cover',
+            theme: coverFile.name,
+            caption: document.getElementById('cover-caption').value.trim() || coverFile.name,
+            lyrics: document.getElementById('cover-lyrics').value.trim(),
+        });
     } catch (e) {
         console.error('[EasyMusic] Cover generation failed:', e);
         showSimpleStatus('❌ Cover: ' + e.message, 'error');
@@ -1297,7 +1367,12 @@ async function generateRepaint() {
         addHistoryEntry({ task_id: taskId, genre: '🎨 Repaint', caption: repaintFile.name.substring(0, 60), duration: getSelectedDuration() });
         if (createResult.seed != null) window._lastSeed = createResult.seed;
 
-        await pollTask(taskId);
+        await pollTask(taskId, {
+            genre: '🎨 Repaint',
+            theme: repaintFile.name,
+            caption: document.getElementById('repaint-caption').value.trim() || repaintFile.name,
+            lyrics: document.getElementById('repaint-lyrics').value.trim(),
+        });
     } catch (e) {
         console.error('[EasyMusic] Repaint generation failed:', e);
         showSimpleStatus('❌ Repaint: ' + e.message, 'error');
@@ -1310,11 +1385,22 @@ async function generateRepaint() {
 /**
  * 共通ポーリング処理
  */
-async function pollTask(taskId) {
+async function pollTask(taskId, backgroundContext = null) {
     const expectedTime = 120; // Cover/Repaintは推定時間をデフォルト2分
     const startTime = Date.now();
     let pollCount = 0;
     const maxPolls = 600;
+
+    if (backgroundContext) {
+        generatePlaybackBackground({
+            taskId,
+            genre: backgroundContext.genre || '',
+            theme: backgroundContext.theme || '',
+            caption: backgroundContext.caption || '',
+            lyrics: backgroundContext.lyrics || '',
+            omakaseQuery: backgroundContext.omakaseQuery || '',
+        });
+    }
 
     while (pollCount < maxPolls) {
         await new Promise(r => setTimeout(r, 1000));
@@ -1345,7 +1431,14 @@ async function pollTask(taskId) {
                     return;
                 }
 
-                currentResults = statusResult.results;
+                currentTaskId = taskId;
+                currentOverlayGenre = backgroundContext?.genre || currentOverlayGenre;
+                currentOverlayBackgroundUrl = getHistoryEntryByTaskId(taskId)?.background_image_url || '';
+                currentResults = statusResult.results.map(result => ({
+                    ...result,
+                    genre: backgroundContext?.genre || currentOverlayGenre || '',
+                    background_image_url: currentOverlayBackgroundUrl,
+                }));
                 currentLyrics = '';
                 showInlinePlayer();
                 playSimpleTrack(0);
@@ -1421,6 +1514,15 @@ async function generateOmakase(query) {
             duration: params.audio_duration,
         });
 
+        generatePlaybackBackground({
+            taskId,
+            genre: '🪄 おまかせ',
+            theme: query,
+            caption: '',
+            lyrics: '',
+            omakaseQuery: query,
+        });
+
         // seed表示
         if (createResult.seed != null) {
             window._lastSeed = createResult.seed;
@@ -1467,7 +1569,14 @@ async function generateOmakase(query) {
                     }
 
                     // 既存プレーヤーで再生
-                    currentResults = statusResult.results;
+                    currentTaskId = taskId;
+                    currentOverlayGenre = '🪄 おまかせ';
+                    currentOverlayBackgroundUrl = getHistoryEntryByTaskId(taskId)?.background_image_url || '';
+                    currentResults = statusResult.results.map(result => ({
+                        ...result,
+                        genre: '🪄 おまかせ',
+                        background_image_url: currentOverlayBackgroundUrl,
+                    }));
                     currentLyrics = '';
                     showInlinePlayer();
                     playSimpleTrack(0);
@@ -1876,6 +1985,14 @@ async function generateSimple() {
             duration: params.audio_duration,
         });
 
+        generatePlaybackBackground({
+            taskId,
+            genre: selectedGenre ? selectedGenre.name : '',
+            theme: theme,
+            caption: params.prompt || '',
+            lyrics: effectiveLyrics === '[inst]' ? '' : effectiveLyrics,
+        });
+
         // 生成開始時点でseedが確定 → デバッグパネルに即表示
         if (createResult.seed != null) {
             window._lastSeed = createResult.seed;
@@ -1901,7 +2018,14 @@ async function generateSimple() {
             if (statusResult.status === 1) {
                 showSimpleProgress(100, currentUILang === 'ja' ? '完了！' : 'Done!');
                 if (statusResult.results && statusResult.results.length > 0) {
-                    currentResults = statusResult.results;
+                    currentTaskId = taskId;
+                    currentOverlayGenre = selectedGenre ? selectedGenre.name : '';
+                    currentOverlayBackgroundUrl = getHistoryEntryByTaskId(taskId)?.background_image_url || '';
+                    currentResults = statusResult.results.map(result => ({
+                        ...result,
+                        genre: selectedGenre ? selectedGenre.name : '',
+                        background_image_url: currentOverlayBackgroundUrl,
+                    }));
                     currentLyrics = effectiveLyrics;
                     // 最初のトラックのseedを保存（歌詞/キャプション編集時に再利用）
                     if (currentResults[0].seed != null) {
@@ -2042,9 +2166,10 @@ function playSimpleTrack(index) {
     document.getElementById('simple-dl-btn').href = url;
     document.getElementById('overlay-dl-btn').href = url;
 
-    // ジャンル情報をオーバーレイに反映
-    currentOverlayGenre = selectedGenre ? selectedGenre.name : null;
-    updateOverlayBackground(currentOverlayGenre);
+    // ジャンル情報 / 背景画像をオーバーレイに反映
+    currentOverlayGenre = result.genre || currentOverlayGenre || (selectedGenre ? selectedGenre.name : null);
+    currentOverlayBackgroundUrl = result.background_image_url || currentOverlayBackgroundUrl || '';
+    updateOverlayBackground(currentOverlayGenre, currentOverlayBackgroundUrl);
 
     // Highlight buttons
     document.querySelectorAll('.track-btn').forEach((b, i) => b.classList.toggle('active', i === index));
@@ -2345,8 +2470,7 @@ function updateTelop(currentTime) {
 function showOverlay(genreName) {
     const overlay = document.getElementById('circle-overlay');
     overlay.classList.add('visible');
-    // 背景画像をジャンルのサムネイルに設定
-    updateOverlayBackground(genreName);
+    updateOverlayBackground(genreName, currentOverlayBackgroundUrl);
     resizeCanvas();
     startCircleAnimation();
 }
@@ -2448,24 +2572,33 @@ async function fetchVizMood(lyrics, caption, genre, omakaseQuery) {
 /**
  * オーバーレイ背景をジャンルのサムネイル画像に更新
  */
-function updateOverlayBackground(genreName) {
+function updateOverlayBackground(genreName, imageUrl = '') {
     const bgEl = document.getElementById('overlay-bg-image');
     const nameEl = document.getElementById('overlay-genre-name');
     if (!bgEl) return;
 
+    const effectiveImageUrl = imageUrl || currentOverlayBackgroundUrl || '';
+    updateMainPlaybackBackground(genreName, effectiveImageUrl);
+    const shouldUseGenreFallback = !currentTaskId && !effectiveImageUrl;
+
     if (genreName) {
-        const imgUrl = getGenreImageUrl(genreName);
+        const imgUrl = effectiveImageUrl || (shouldUseGenreFallback ? getGenreImageUrl(genreName) : '');
         if (imgUrl) {
             bgEl.style.backgroundImage = `url('${imgUrl}')`;
-            bgEl.style.opacity = '0.3';
+            bgEl.style.opacity = effectiveImageUrl ? '0.42' : '0.3';
         } else {
             bgEl.style.backgroundImage = 'none';
             bgEl.style.opacity = '0';
         }
         if (nameEl) nameEl.textContent = genreName;
     } else {
-        bgEl.style.backgroundImage = 'none';
-        bgEl.style.opacity = '0';
+        if (effectiveImageUrl) {
+            bgEl.style.backgroundImage = `url('${effectiveImageUrl}')`;
+            bgEl.style.opacity = '0.42';
+        } else {
+            bgEl.style.backgroundImage = 'none';
+            bgEl.style.opacity = '0';
+        }
         if (nameEl) nameEl.textContent = '';
     }
 }
@@ -3110,6 +3243,10 @@ function _getHistoryStore() {
     return JSON.parse(sessionStorage.getItem('easymusic_history') || '[]');
 }
 
+function getHistoryEntryByTaskId(taskId) {
+    return _getHistoryStore().find(h => h.task_id === taskId) || null;
+}
+
 /** sessionStorage に履歴を保存 */
 function _setHistoryStore(history) {
     sessionStorage.setItem('easymusic_history', JSON.stringify(history));
@@ -3144,6 +3281,7 @@ function updateHistoryEntry(taskId, audioUrls, extra) {
         if (extra) {
             if (extra.title) entry.title = extra.title;
             if (extra.lyrics) entry.lyrics = extra.lyrics;
+            if (extra.background_image_url !== undefined) entry.background_image_url = extra.background_image_url;
         }
         _setHistoryStore(history);
     }
@@ -3274,15 +3412,18 @@ function playFromHistory(idx) {
     const entry = history[idx];
     if (!entry || !entry.audio_urls || entry.audio_urls.length === 0) return;
 
-    currentResults = entry.audio_urls.map(url => ({ url, lyrics: entry.lyrics || '' }));
+    currentTaskId = entry.task_id || '';
+    currentOverlayGenre = entry.genre || '';
+    currentOverlayBackgroundUrl = entry.background_image_url || '';
+    currentResults = entry.audio_urls.map(url => ({
+        url,
+        lyrics: entry.lyrics || '',
+        genre: entry.genre || '',
+        background_image_url: entry.background_image_url || '',
+    }));
     currentLyrics = entry.lyrics || '';
     showInlinePlayer();
     playSimpleTrack(0);
-
-    // オーバーレイにジャンル反映
-    if (entry.genre) {
-        currentOverlayGenre = entry.genre;
-    }
     // 曲名を復元
     setSongTitle(entry.title || '');
 
@@ -3666,6 +3807,14 @@ async function jukeboxGenerateOne() {
                 duration: params.audio_duration,
             });
 
+            generatePlaybackBackground({
+                taskId,
+                genre: genre.name,
+                theme: genre.name,
+                caption: caption,
+                lyrics: effectiveLyrics === '[inst]' ? '' : effectiveLyrics,
+            });
+
             const expectedTime = estimateGenerationTime(params);
             let polls = 0;
             const maxPolls = 300;
@@ -3694,7 +3843,15 @@ async function jukeboxGenerateOne() {
                         const audioUrls = statusResult.results.map(r => convertAudioUrl(r.url));
                         updateHistoryEntry(taskId, audioUrls, { lyrics: effectiveLyrics });
                         jukeboxGenerating = false;
-                        return { audioUrl: url, genre: genre.name, lyrics: effectiveLyrics, taskId: taskId };
+                        return {
+                            audioUrl: url,
+                            genre: genre.name,
+                            lyrics: effectiveLyrics,
+                            taskId: taskId,
+                            caption: caption,
+                            theme: genre.name,
+                            background_image_url: getHistoryEntryByTaskId(taskId)?.background_image_url || '',
+                        };
                     }
                     throw new Error('Empty result');
                 } else if (statusResult.status === 2) {
@@ -3731,7 +3888,13 @@ function jukeboxPlayTrack(result) {
     const audio = document.getElementById('simple-audio');
     audio.src = result.audioUrl;
 
-    currentResults = [{ url: result.audioUrl }];
+    currentTaskId = result.taskId || '';
+    currentOverlayBackgroundUrl = result.background_image_url || '';
+    currentResults = [{
+        url: result.audioUrl,
+        genre: result.genre,
+        background_image_url: result.background_image_url || '',
+    }];
     currentTrackIndex = 0;
     currentLyrics = result.lyrics;
 
@@ -3746,7 +3909,7 @@ function jukeboxPlayTrack(result) {
     }
 
     currentOverlayGenre = result.genre;
-    updateOverlayBackground(result.genre);
+    updateOverlayBackground(result.genre, currentOverlayBackgroundUrl);
 
     if (result.lyrics && result.lyrics !== '[inst]') {
         showStaticLyrics(result.lyrics);
@@ -3759,6 +3922,14 @@ function jukeboxPlayTrack(result) {
 
     // ビジュアライザー雰囲気を非同期推定（JUKEBOX）
     fetchVizMood(result.lyrics || '', '', result.genre || '', '');
+
+    generatePlaybackBackground({
+        taskId: result.taskId || '',
+        genre: result.genre || '',
+        theme: result.theme || result.genre || '',
+        caption: result.caption || '',
+        lyrics: result.lyrics === '[inst]' ? '' : (result.lyrics || ''),
+    });
 
     updateJukeboxNowPlaying(`♪ ${result.genre}`, jukeboxTrackCount);
     hideSimpleProgress();

@@ -51,6 +51,33 @@ body {
     overflow-x: hidden;
 }
 
+.app-playback-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    filter: blur(8px) saturate(1.1) brightness(0.7);
+    transform: scale(1.04);
+    transition: background-image 0.8s ease, opacity 0.8s ease;
+}
+
+.app-playback-bg.visible {
+    opacity: 0.92;
+}
+
+.app-playback-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at center, rgba(17, 24, 39, 0.06) 0%, rgba(12, 14, 26, 0.42) 72%),
+        linear-gradient(180deg, rgba(12, 14, 26, 0.12) 0%, rgba(12, 14, 26, 0.34) 100%);
+}
+
 /* 背景装飾 */
 body::before {
     content: '';

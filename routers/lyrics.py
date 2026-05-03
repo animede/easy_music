@@ -2,9 +2,11 @@
 作詞・タグ生成エンドポイント
 """
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
+from services.image_service import image_service
 from services.llm_service import llm_service
 
 router = APIRouter(prefix="/api", tags=["lyrics"])
@@ -124,6 +126,27 @@ class VizMoodRequest(BaseModel):
     omakase_query: str = Field(default="", description="おまかせクエリ")
 
 
+class BackgroundImageRequest(BaseModel):
+    """再生背景画像生成リクエスト"""
+    task_id: str = Field(default="", description="タスクID（キャッシュ用）")
+    genre: str = Field(default="", description="ジャンル")
+    theme: str = Field(default="", description="テーマ")
+    caption: str = Field(default="", description="音楽キャプション")
+    lyrics: str = Field(default="", description="歌詞")
+    omakase_query: str = Field(default="", description="おまかせ生成クエリ")
+    width: int = Field(default=1296, description="画像幅")
+    height: int = Field(default=728, description="画像高さ")
+
+
+class BackgroundImageResponse(BaseModel):
+    """再生背景画像生成レスポンス"""
+    success: bool
+    image_url: str = ""
+    prompt: str = ""
+    cached: bool = False
+    error: Optional[str] = None
+
+
 # =============================================================================
 # Endpoints
 # =============================================================================
@@ -161,6 +184,43 @@ async def generate_viz_mood(request: VizMoodRequest):
         return {"success": True, "mood": mood}
     except Exception as e:
         return {"success": False, "mood": "energetic", "error": str(e)}
+
+
+@router.post("/background_image", response_model=BackgroundImageResponse)
+async def generate_background_image(request: BackgroundImageRequest):
+    """
+    音楽再生時に表示する背景画像を生成
+    """
+    try:
+        result = await image_service.generate_background_image(
+            task_id=request.task_id,
+            genre=request.genre,
+            theme=request.theme,
+            caption=request.caption,
+            lyrics=request.lyrics,
+            omakase_query=request.omakase_query,
+            width=request.width,
+            height=request.height,
+        )
+        return BackgroundImageResponse(
+            success=True,
+            image_url=result["image_url"],
+            prompt=result.get("prompt", ""),
+            cached=result.get("cached", False),
+        )
+    except Exception as e:
+        return BackgroundImageResponse(success=False, error=str(e))
+
+
+@router.get("/background_image/{image_id}")
+async def get_background_image(image_id: str):
+    """
+    キャッシュ済み背景画像を返す
+    """
+    image_path = image_service.get_cached_image_path(image_id)
+    if not image_path:
+        raise HTTPException(status_code=404, detail="Background image not found")
+    return FileResponse(image_path, media_type="image/png")
 
 
 @router.post("/theme", response_model=ThemeGenerateResponse)
