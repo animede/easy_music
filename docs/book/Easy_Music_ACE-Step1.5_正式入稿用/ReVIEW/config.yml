@@ -1,0 +1,19 @@
+# ReVIEW 5.9.0 / NextPublishing 入稿用の最小設定です。
+review_version: 5.9
+booktitle: Easy Musicで動かすACE-Step 1.5 完全ガイド
+subtitle: 音楽生成AI制作とローカル運用のための実践ガイド
+aut: null
+date: null
+language: ja
+
+toc: true
+secnolevel: 3
+chapterlink: null
+epubversion: 3
+epubmaker:
+  flattoc: true
+
+# ソースコードハイライトは編集部指定により使用しません。
+# highlight:
+#   html: "rouge"
+#   latex: "listings"

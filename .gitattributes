@@ -1,0 +1,5 @@
+# Re:VIEW files - preserve tabs
+*.re text eol=lf working-tree-encoding=UTF-8 diff=text
+
+# Markdown files - preserve tabs
+*.md text eol=lf working-tree-encoding=UTF-8 diff=text

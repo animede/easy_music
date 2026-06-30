@@ -1,0 +1,35 @@
+% for user-defined macro
+
+\usepackage{xstring}
+
+% 汎用キャプション（「表」「コード例」「コマンド例」）は
+% PDF上では冗長になりやすいため、番号だけを残して抑制する。
+\renewcommand{\reviewtablecaption}[1]{%
+	\IfStrEq{#1}{表}{%
+		\caption{}
+	}{%
+		\caption{#1}%
+	}%
+}
+
+\newcommand{\reviewtrimgenericlistcaption}[1]{%
+	\IfEndWith{#1}{: コード例}{%
+		\StrBefore{#1}{: コード例}[\reviewgenericcaptiontmp]%
+		\medskip{\small\noindent \reviewgenericcaptiontmp}\vspace*{-1.3zw}%
+	}{%
+		\IfEndWith{#1}{: コマンド例}{%
+			\StrBefore{#1}{: コマンド例}[\reviewgenericcaptiontmp]%
+			\medskip{\small\noindent \reviewgenericcaptiontmp}\vspace*{-1.3zw}%
+		}{%
+			\medskip{\small\noindent #1}\vspace*{-1.3zw}%
+		}%
+	}%
+}
+
+\renewcommand{\reviewlistcaption}[1]{%
+	\reviewtrimgenericlistcaption{#1}%
+}
+
+\renewcommand{\reviewcmdcaption}[1]{%
+	\reviewtrimgenericlistcaption{#1}%
+}
