@@ -9,6 +9,7 @@ import asyncio
 import logging
 import re
 import httpx
+from urllib.parse import urlencode
 
 from services.ace_step_client import ace_step_client, TaskResult, SUPPORTED_LANGUAGES, SUPPORTED_KEY_SCALES
 from config import settings
@@ -821,7 +822,7 @@ async def proxy_audio(path: str):
     ACE-Step APIからの音声ファイルをプロキシ
     CORSの問題を回避するため
     """
-    audio_url = f"{settings.ace_step_api_url}/v1/audio?path={path}"
+    audio_url = f"{settings.ace_step_api_url}/v1/audio?{urlencode({'path': path})}"
     last_err = None
 
     for attempt in range(3):

@@ -331,7 +331,7 @@
                         </label>
                     </div>
                     <div class="control-item">
-                        <button class="debug-info-btn" id="debug-info-btn" onclick="toggleDebugPanel()" data-i18n="btn_debug">詳細情報</button>
+                        <button class="debug-info-btn" id="debug-info-btn" onclick="toggleDebugPanel()" data-i18n="btn_debug">音楽生成情報</button>
                     </div>
                 </div>
             </details>
@@ -365,8 +365,8 @@
                         <span class="options-label" data-i18n="label_vocal">ボーカル：</span>
                         <div class="mood-chips" id="vocal-chips">
                             <button class="mood-chip chip-clear" onclick="clearVocalChips()" title="クリア">✕</button>
-                            <button class="mood-chip" data-vocal="female vocal" data-i18n="vocal_female">👩 女声</button>
-                            <button class="mood-chip" data-vocal="male vocal" data-i18n="vocal_male">👨 男声</button>
+                            <button class="mood-chip" data-vocal="female vocal" data-i18n="vocal_female">👩 女性</button>
+                            <button class="mood-chip" data-vocal="male vocal" data-i18n="vocal_male">👨 男性</button>
                             <button class="mood-chip" data-vocal="powerful vocal" data-i18n="vocal_powerful">🎤 力強い</button>
                             <button class="mood-chip" data-vocal="breathy whisper vocal" data-i18n="vocal_whisper">🌬️ ウィスパー</button>
                             <button class="mood-chip" data-vocal="falsetto vocal" data-i18n="vocal_falsetto">🎵 ファルセット</button>
@@ -395,7 +395,16 @@
                     <textarea id="simple-lyrics" class="simple-textarea"
                               data-i18n-placeholder="placeholder_lyrics"
                               placeholder="[verse]&#10;星の海に浮かぶ願いが&#10;夸空を駆け巡る&#10;&#10;[chorus]&#10;輝く未来へ..."></textarea>
-                    <button class="caption-clear-btn" onclick="clearLyrics()" data-i18n="btn_lyrics_regen" title="クリアして再度AIに生成させる">♻️ 再生成</button>
+                    <button class="caption-clear-btn" id="lyrics-regen-btn" onclick="regenerateLyrics()" data-i18n="btn_lyrics_regen" title="現在のテーマやジャンルをもとに、事前に歌詞をAI生成する">♻️ 再生成</button>
+                </div>
+
+                <!-- キャプション -->
+                <div class="subsection-label" data-i18n="debug_caption">キャプション</div>
+                <div class="debug-caption-edit">
+                    <textarea id="simple-caption" class="debug-caption-textarea" rows="3" spellcheck="false"
+                              data-i18n-placeholder="placeholder_debug_caption"
+                              placeholder="生成後にキャプションが表示されます。編集すると次回生成時に有効になります。"></textarea>
+                    <button class="caption-clear-btn" id="caption-regen-btn-main" onclick="regenerateCaption()" data-i18n="btn_caption_regen" title="現在のテーマ・歌詞・ジャンルをもとに、事前にキャプションをAI生成する">♻️ 再生成</button>
                 </div>
 
             </div>
@@ -426,6 +435,7 @@
                 </button>
                 <div class="inline-player" id="inline-player">
                     <div class="track-buttons" id="track-buttons"></div>
+                    <button class="playback-btn" id="play-pause-btn" onclick="togglePlayback(event)" data-i18n-title="title_play" title="再生">▶</button>
                     <a class="dl-btn" id="simple-dl-btn" href="#" download data-i18n-title="title_download" title="ダウンロード">⬇️</a>
                     <input type="range" class="seek-bar" id="seek-bar" min="0" max="100" value="0">
                     <span class="time-display" id="time-display">0:00 / 0:00</span>
@@ -468,6 +478,7 @@
         </div>
         <div class="overlay-controls" id="overlay-controls">
             <div class="overlay-tracks" id="overlay-tracks"></div>
+            <button class="playback-btn overlay-playback-btn" id="overlay-play-pause-btn" onclick="togglePlayback(event)" data-i18n-title="title_play" title="再生">▶</button>
             <div class="viz-mode-selector" id="viz-mode-selector">
                 <button class="viz-mode-btn active" data-mode="spectrum" title="スペクトル">▮▮</button>
                 <button class="viz-mode-btn" data-mode="wave" title="ウェーブ">〜</button>
@@ -514,7 +525,7 @@
                 <div class="debug-caption-edit">
                     <textarea class="debug-caption-textarea" id="debug-caption" rows="3" spellcheck="false" data-i18n-placeholder="placeholder_debug_caption"
                               placeholder="生成後にキャプションが表示されます。編集すると次回生成時に有効になります。"></textarea>
-                    <button class="caption-clear-btn" onclick="clearManualCaption()" data-i18n="btn_caption_regen" title="クリアして再度AIに生成させる">♻️ 再生成</button>
+                    <button class="caption-clear-btn" id="caption-regen-btn-panel" onclick="regenerateCaption()" data-i18n="btn_caption_regen" title="現在のテーマ・歌詞・ジャンルをもとに、事前にキャプションをAI生成する">♻️ 再生成</button>
                 </div>
             </div>
             <div class="debug-row">
@@ -528,7 +539,7 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=20260325a"></script>
+    <script src="/static/app.js?v=20260513a"></script>
 
     <footer class="simple-footer">
         <p>Powered by <a href="https://github.com/ace-step/ACE-Step" target="_blank" rel="noopener">ACE-Step 1.5</a> &amp; ゆずき</p>

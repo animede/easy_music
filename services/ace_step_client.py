@@ -9,6 +9,7 @@ import httpx
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Callable
 from enum import Enum
+from urllib.parse import urlparse, parse_qs, quote
 
 from config import settings
 
@@ -52,6 +53,39 @@ SUPPORTED_KEY_SCALES = [
 ]
 
 
+def _build_proxy_audio_url(raw_url: str) -> Optional[str]:
+    """ACE-Step の音声 URL/メディア URL からローカルプロキシ URL を構築する。"""
+    if not raw_url:
+        return None
+
+    parsed = urlparse(raw_url)
+    query = parse_qs(parsed.query)
+    media_path = query.get("path", [""])[0]
+    if not media_path:
+        return None
+
+    return f"/api/audio?path={quote(media_path, safe='')}"
+
+
+def _normalize_audio_result_url(file_path: str, base_url: str) -> Optional[str]:
+    """ACE-Step の返却値をフロントエンド向けの再生 URL に正規化する。"""
+    if not file_path:
+        return None
+
+    proxy_url = _build_proxy_audio_url(file_path)
+    if proxy_url:
+        return proxy_url
+
+    parsed = urlparse(file_path)
+    if parsed.scheme or parsed.netloc:
+        return file_path
+
+    if file_path.startswith("/"):
+        return f"{base_url}{file_path}"
+
+    return f"{base_url}/{file_path.lstrip('/')}"
+
+
 @dataclass
 class AudioMetadata:
     """音声メタデータ"""
@@ -92,7 +126,7 @@ class TaskResult:
         
         # URLを構築
         file_path = data.get("file", "")
-        url = f"{base_url}{file_path}" if file_path else None
+        url = _normalize_audio_result_url(file_path, base_url) if file_path else None
         
         return cls(
             file=file_path,
@@ -424,7 +458,7 @@ class AceStepClient:
 
     def get_audio_url(self, file_path: str) -> str:
         """音声ファイルのURLを取得"""
-        return f"{self.base_url}{file_path}"
+        return _normalize_audio_result_url(file_path, self.base_url)
 
 
 # シングルトンインスタンス

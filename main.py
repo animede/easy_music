@@ -87,7 +87,9 @@ async def log_base_urls_on_startup():
     apply_cli_args()
 
     from services.ace_step_client import ace_step_client
+    from services.image_service import image_service
     ace_step_client.base_url = settings.ace_step_api_url.rstrip("/")
+    image_service.start_health_check_task()
 
     logger.info("ACE-Step API Base URL: %s", settings.ace_step_api_url)
     logger.info("Image API Base URL: %s", settings.image_generation_url)
@@ -96,6 +98,13 @@ async def log_base_urls_on_startup():
     else:
         logger.info("LLM API Base URL: %s", settings.openai_base_url)
         logger.info("LLM Model: %s", settings.openai_chat_model)
+
+
+@app.on_event("shutdown")
+async def stop_background_tasks():
+    from services.image_service import image_service
+
+    await image_service.stop_health_check_task()
 
 
 # =============================================================================

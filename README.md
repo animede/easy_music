@@ -9,7 +9,7 @@
 - 🤖 **AI作詞** — テーマに合わせた歌詞を自動生成
 - 😊 **ムード/ボーカルチップ** — 10種のムードと6種のボーカルタイプをワンタップ指定
 - 📝 **ローカルLLMフォールバック** — 外部LLM接続不可時はQwen3-1.7Bで自動切替
-- 🏠️ **キャプション自動/手動** — ジャンル別の最適キャプション生成＋デバッグパネルで直接編集可
+- 🏠️ **キャプション自動/手動** — ジャンル別の最適キャプション生成＋音楽生成情報で直接編集可
 - 🎼 **AI強化** — BPM・キー自動設定
 - 🧠 **Thinking モード** — ON/OFFでキャプション生成スタイルを切替
 - 🎚️ **STEP選択** — 8/20/50/80/100ステップで品質と速度を調整
@@ -243,6 +243,12 @@ ACESTEP_CONFIG_PATH=acestep-v15-base ./run_api_server_lowvram.sh
 
 # 画像生成APIも指定
 ./start_server.sh --ace-url http://YOUR_ACE_HOST:8001 --img-url http://YOUR_IMAGE_HOST:64656
+
+# 画像サーバのヘルスチェック間隔を15秒に変更
+./start_server.sh --img-health-interval 15
+
+# 公開フォールバック画像サーバも変更
+./start_server.sh --img-fallback-url http://YOUR_FALLBACK_IMAGE_HOST:64656
 ```
 
 | 項目 | WEBアプリ版 (`start.sh`) | サーバ版 (`start_server.sh`) |
@@ -260,7 +266,7 @@ ACE_STEP_API_URL=http://localhost:8001
 OPENAI_BASE_URL=http://localhost:11434/v1
 OPENAI_API_KEY=YOUR_KEY
 OPENAI_CHAT_MODEL=gemma3:latest
-IMAGE_GENERATION_URL=http://192.168.5.73:64656
+IMAGE_GENERATION_URL=http://localhost:64656
 HOST=0.0.0.0
 PORT=8889
 ```
@@ -269,12 +275,28 @@ PORT=8889
 
 背景画像機能は `POST /generate/` を持つ画像生成サーバーを使用します。
 
-- デフォルトURL: `http://192.168.5.73:64656`
+- デフォルトURL: `http://localhost:64656`
 - CLI引数:
 	- `--img-url http://HOST:64656`
+	- `--img-fallback-url http://HOST:64656`
 	- `--img-host HOST`
 	- `--img-port 64656`
+	- `--img-health-interval 30`
 - 音楽生成とは独立しているため、音楽と画像を並列に生成できます
+
+フォールバック順:
+
+1. `IMAGE_GENERATION_URL` / `--img-url` で指定した画像サーバ
+2. 任意のフォールバックサーバ `IMAGE_GENERATION_FALLBACK_URL` / `--img-fallback-url`（デフォルト: 未設定）
+3. 画像生成が両方失敗した場合はジャンルサムネイル画像
+4. ジャンル未選択時は背景なし
+
+ヘルスチェック挙動:
+
+- 画像サーバの到達性は定期ヘルスチェックで監視されます
+- 一度失敗した候補は毎回の生成で再試行せず、一時的にスキップされます
+- ヘルスチェックで復帰を検知すると自動的に再び利用されます
+- 間隔は `--img-health-interval` で変更できます（最小 5 秒、デフォルト 30 秒）
 
 画像が少し遅れて完成した場合でも、再生中に自動で背景が更新されます。
 

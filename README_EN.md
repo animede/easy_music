@@ -9,7 +9,7 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 - 🤖 **AI Lyrics** — Auto-generates lyrics to match your theme
 - 😊 **Mood / Vocal Chips** — Pick from 10 moods and 6 vocal types; reflected in caption generation
 - 📝 **Local LLM Fallback** — Automatically switches to Qwen3-1.7B when external LLM is unavailable
-- 🏛️ **Auto / Manual Caption** — Genre-optimized caption generation + direct editing in the debug panel
+- 🏛️ **Auto / Manual Caption** — Genre-optimized caption generation + direct editing in the Music Generation Info panel
 - 🎼 **AI Enhancement** — Automatic BPM and key setting
 - 🧠 **Thinking Mode** — Toggle ON/OFF to switch caption generation style
 - 🎚️ **STEP Selector** — Choose 8/20/50/80/100 steps to balance quality and speed
@@ -243,6 +243,12 @@ History is stored in the browser's sessionStorage (independent per tab).
 
 # Specify image generation API too
 ./start_server.sh --ace-url http://YOUR_ACE_HOST:8001 --img-url http://YOUR_IMAGE_HOST:64656
+
+# Change image server health-check interval to 15 seconds
+./start_server.sh --img-health-interval 15
+
+# Override the public fallback image server too
+./start_server.sh --img-fallback-url http://YOUR_FALLBACK_IMAGE_HOST:64656
 ```
 
 | Feature | Web App (`start.sh`) | Server (`start_server.sh`) |
@@ -258,7 +264,7 @@ ACE_STEP_API_URL=http://localhost:8001
 OPENAI_BASE_URL=http://localhost:11434/v1
 OPENAI_API_KEY=YOUR_KEY
 OPENAI_CHAT_MODEL=gemma3:latest
-IMAGE_GENERATION_URL=http://192.168.5.73:64656
+IMAGE_GENERATION_URL=http://localhost:64656
 HOST=0.0.0.0
 PORT=8889
 ```
@@ -267,12 +273,28 @@ PORT=8889
 
 The background artwork feature uses an image generation server that provides `POST /generate/`.
 
-- Default URL: `http://192.168.5.73:64656`
+- Default URL: `http://localhost:64656`
 - CLI options:
 	- `--img-url http://HOST:64656`
+	- `--img-fallback-url http://HOST:64656`
 	- `--img-host HOST`
 	- `--img-port 64656`
+	- `--img-health-interval 30`
 - Since the image server is separate from the music server, music and image generation can run in parallel
+
+Fallback order:
+
+1. The image server specified by `IMAGE_GENERATION_URL` / `--img-url`
+2. Optional fallback server `IMAGE_GENERATION_FALLBACK_URL` / `--img-fallback-url` (default: unset)
+3. If both image servers fail, the selected genre thumbnail
+4. If no genre is selected, no background is shown
+
+Health-check behavior:
+
+- Image server reachability is monitored by periodic health checks
+- Once a candidate fails, it is temporarily skipped instead of being retried on every generation
+- If a server recovers, it is automatically put back into service
+- The interval can be changed with `--img-health-interval` (minimum 5 seconds, default 30 seconds)
 
 If image generation finishes slightly later than music generation, the background is still updated automatically during playback.
 

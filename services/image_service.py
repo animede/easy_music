@@ -8,13 +8,16 @@ Playback background image generation service.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import io
+import ipaddress
 import json
 import logging
 import pickle
 import re
+import time
 from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import urlparse
@@ -74,6 +77,25 @@ class ImageService:
     def __init__(self) -> None:
         self.cache_dir = Path(__file__).resolve().parent.parent / "generated_backgrounds"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self._server_health: dict[str, dict[str, Any]] = {}
+        self._health_check_task: asyncio.Task | None = None
+
+    def start_health_check_task(self) -> None:
+        """画像サーバの定期ヘルスチェックを開始する。"""
+        if self._health_check_task and not self._health_check_task.done():
+            return
+        self._health_check_task = asyncio.create_task(self._health_check_loop())
+
+    async def stop_health_check_task(self) -> None:
+        """定期ヘルスチェックを停止する。"""
+        if not self._health_check_task:
+            return
+        self._health_check_task.cancel()
+        try:
+            await self._health_check_task
+        except asyncio.CancelledError:
+            pass
+        self._health_check_task = None
 
     def get_cached_image_path(self, image_id: str) -> Path | None:
         path = self.cache_dir / f"{self._sanitize_image_id(image_id)}.png"
@@ -259,34 +281,132 @@ class ImageService:
         errors = []
 
         for base_url in self._candidate_base_urls():
+            if not await self._is_base_url_reachable(base_url):
+                errors.append(f"{base_url}: unreachable")
+                continue
+
             try:
-                return await self._request_generate_endpoint(base_url, prompt_bundle, width, height)
+                image_bytes = await self._request_generate_endpoint(base_url, prompt_bundle, width, height)
+                self._set_base_url_health(base_url, True, detail="/generate/: ok")
+                return image_bytes
             except Exception as e:
+                self._record_endpoint_failure(base_url, "/generate/", e)
                 errors.append(f"{base_url}/generate/: {e}")
 
             try:
-                return await self._request_text2image_endpoint(base_url, prompt_bundle, width, height)
+                image_bytes = await self._request_text2image_endpoint(base_url, prompt_bundle, width, height)
+                self._set_base_url_health(base_url, True, detail="/text2image: ok")
+                return image_bytes
             except Exception as e:
+                self._record_endpoint_failure(base_url, "/text2image", e)
                 errors.append(f"{base_url}/text2image: {e}")
 
         raise RuntimeError("Image generation failed: " + " | ".join(errors[-4:]))
 
     def _candidate_base_urls(self) -> list[str]:
-        raw_url = settings.image_generation_url.rstrip("/")
-        if not raw_url.startswith("http://") and not raw_url.startswith("https://"):
-            raw_url = "http://" + raw_url
+        raw_url = self._normalize_base_url(settings.image_generation_url)
+        public_url = self._normalize_base_url(settings.image_generation_fallback_url)
 
         parsed = urlparse(raw_url)
         candidates = []
         if parsed.hostname and parsed.port is None and (not parsed.path or parsed.path == "/"):
             candidates.append(f"{parsed.scheme}://{parsed.hostname}:64656")
         candidates.append(raw_url)
+        if public_url not in candidates:
+            candidates.append(public_url)
 
         unique = []
         for candidate in candidates:
             if candidate not in unique:
                 unique.append(candidate)
         return unique
+
+    def _normalize_base_url(self, raw_url: str) -> str:
+        base_url = (raw_url or "").rstrip("/")
+        if not base_url.startswith("http://") and not base_url.startswith("https://"):
+            base_url = "http://" + base_url
+        return base_url
+
+    async def _is_base_url_reachable(self, base_url: str) -> bool:
+        cached = self._server_health.get(base_url)
+        if cached is not None:
+            if not cached.get("reachable"):
+                checked_at = float(cached.get("checked_at") or 0)
+                retry_after = max(5.0, float(settings.image_generation_health_check_interval))
+                if time.time() - checked_at >= retry_after:
+                    return await self._probe_base_url(base_url)
+            return bool(cached.get("reachable"))
+
+        return await self._probe_base_url(base_url)
+
+    async def _probe_base_url(self, base_url: str) -> bool:
+        parsed = urlparse(base_url)
+        host = parsed.hostname or ""
+        timeout = min(5.0, float(settings.image_generation_timeout))
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.get(f"{base_url}/")
+                self._set_base_url_health(base_url, True, detail=f"status={response.status_code}")
+                return True
+        except Exception as e:
+            host_type = "private" if self._is_private_host(host) else "public"
+            self._set_base_url_health(base_url, False, detail=f"{host_type}: {e}")
+            return False
+
+    def _set_base_url_health(self, base_url: str, reachable: bool, *, detail: str = "") -> None:
+        previous = self._server_health.get(base_url)
+        previous_reachable = None if previous is None else bool(previous.get("reachable"))
+        self._server_health[base_url] = {
+            "reachable": reachable,
+            "detail": detail,
+            "checked_at": time.time(),
+        }
+
+        if previous_reachable != reachable:
+            level = logger.info if reachable else logger.warning
+            level(
+                "Image server %s: %s%s",
+                "recovered" if reachable else "unreachable",
+                base_url,
+                f" ({detail})" if detail else "",
+            )
+
+    def _record_endpoint_failure(self, base_url: str, endpoint: str, exc: Exception) -> None:
+        """
+        エンドポイント単位の失敗を記録する。
+
+        画像サーバによっては /generate/ が 404 で /text2image だけ使える構成がある。
+        そのような通常のHTTP応答や生成失敗までベースURL全体の到達不能として扱うと、
+        次回以降のJUKEBOX背景生成がヘルスチェック更新までスキップされるため、
+        接続不能系の例外だけ unreachable にする。
+        """
+        if isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError)):
+            self._set_base_url_health(base_url, False, detail=f"{endpoint}: {exc}")
+            return
+
+        logger.warning("Image endpoint failed but server is reachable: %s%s (%s)", base_url, endpoint, exc)
+        self._set_base_url_health(base_url, True, detail=f"{endpoint}: endpoint failed")
+
+    async def _health_check_loop(self) -> None:
+        """候補画像サーバのヘルスを定期更新する。"""
+        while True:
+            for base_url in self._candidate_base_urls():
+                try:
+                    await self._probe_base_url(base_url)
+                except Exception as e:
+                    logger.warning("Image health check failed for %s: %s", base_url, e)
+            await asyncio.sleep(max(5.0, float(settings.image_generation_health_check_interval)))
+
+    def _is_private_host(self, host: str) -> bool:
+        lowered = (host or "").strip().lower()
+        if lowered in {"localhost", "127.0.0.1", "::1"}:
+            return True
+
+        try:
+            return ipaddress.ip_address(lowered).is_private
+        except ValueError:
+            return lowered.endswith(".local")
 
     async def _request_generate_endpoint(
         self,

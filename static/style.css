@@ -726,6 +726,28 @@ body::after {
     box-shadow: 0 0 10px var(--primary-glow);
 }
 
+.playback-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    flex-shrink: 0;
+}
+.playback-btn:hover {
+    border-color: var(--primary-light);
+    background: rgba(255,255,255,0.08);
+}
+
 .dl-btn {
     text-decoration: none;
     font-size: 1rem;
@@ -896,6 +918,16 @@ body::after {
     border-color: var(--primary);
     color: white;
     box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.overlay-playback-btn {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.9);
+}
+.overlay-playback-btn:hover {
+    border-color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.1);
 }
 
 .overlay-dl-btn {
@@ -1168,18 +1200,23 @@ body::after {
 }
 .caption-clear-btn {
     align-self: flex-end;
-    background: transparent;
-    border: 1px solid rgba(168,130,255,0.3);
+    background: rgba(124, 92, 252, 0.18);
+    border: 1px solid rgba(168,130,255,0.55);
     border-radius: 4px;
-    color: rgba(168,130,255,0.7);
+    color: rgba(245, 240, 255, 0.96);
+    font-weight: 600;
     font-size: 0.7rem;
-    padding: 2px 8px;
+    padding: 3px 10px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    box-shadow: 0 2px 10px rgba(124, 92, 252, 0.16);
+    transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 .caption-clear-btn:hover {
-    background: rgba(168,130,255,0.15);
-    color: rgba(168,130,255,1);
+    background: rgba(124, 92, 252, 0.3);
+    border-color: rgba(200,180,255,0.85);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(124, 92, 252, 0.26);
+    transform: translateY(-1px);
 }
 
 .simple-footer {

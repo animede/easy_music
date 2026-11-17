@@ -47,9 +47,11 @@ def parse_args():
     parser.add_argument("--llm-model", type=str, default=None, help="LLMモデル名")
 
     # 画像生成API設定
-    parser.add_argument("--img-host", type=str, default=None, help="画像生成APIホスト (default: 192.168.5.73)")
+    parser.add_argument("--img-host", type=str, default=None, help="画像生成APIホスト (default: localhost)")
     parser.add_argument("--img-port", type=int, default=None, help="画像生成APIポート (default: 64656)")
-    parser.add_argument("--img-url", type=str, default=None, help="画像生成API URL (例: http://192.168.5.73:64656)")
+    parser.add_argument("--img-url", type=str, default=None, help="画像生成API URL (例: http://localhost:64656)")
+    parser.add_argument("--img-fallback-url", type=str, default=None, help="画像生成APIフォールバックURL (例: http://127.0.0.1:64656)")
+    parser.add_argument("--img-health-interval", type=float, default=None, help="画像生成APIヘルスチェック間隔秒 (default: 30)")
     
     # LLMモード
     parser.add_argument("--local-llm", action="store_true", help="外部LLMを使わず内蔵LLM(Qwen3-1.7B)のみ使用")
@@ -80,8 +82,10 @@ class Settings(BaseSettings):
     openai_chat_model: str = "gemma3:latest"
 
     # 画像生成設定
-    image_generation_url: str = "http://192.168.5.73:64656"
+    image_generation_url: str = "http://localhost:64656"
+    image_generation_fallback_url: str = ""
     image_generation_timeout: float = 90.0
+    image_generation_health_check_interval: float = 30.0
     
     # サーバー設定
     host: str = "0.0.0.0"
@@ -147,9 +151,13 @@ class Settings(BaseSettings):
         elif args.img_host or args.img_port:
             from urllib.parse import urlparse
             parsed = urlparse(self.image_generation_url)
-            host = args.img_host or parsed.hostname or "192.168.5.73"
+            host = args.img_host or parsed.hostname or "localhost"
             port = args.img_port or parsed.port or 64656
             self.image_generation_url = f"http://{host}:{port}"
+        if args.img_fallback_url:
+            self.image_generation_fallback_url = args.img_fallback_url.rstrip("/")
+        if args.img_health_interval is not None:
+            self.image_generation_health_check_interval = max(5.0, float(args.img_health_interval))
         
         # LLMモード
         if args.local_llm:
