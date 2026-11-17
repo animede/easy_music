@@ -8,7 +8,7 @@ Uses [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) as the music generatio
 - 🎵 **30 Genres** — J-POP, Rock, Jazz, EDM, and more genre tiles
 - 🤖 **AI Lyrics** — Auto-generates lyrics to match your theme
 - 😊 **Mood / Vocal Chips** — Pick from 10 moods and 6 vocal types; reflected in caption generation
-- 📝 **Local LLM Fallback** — Automatically switches to Qwen3-1.7B when external LLM is unavailable
+- 📝 **Local LLM Fallback** — Automatically switches to Gemma 4 E4B (GGUF Q4_0, CPU) when the external LLM is unavailable
 - 🏛️ **Auto / Manual Caption** — Genre-optimized caption generation + direct editing in the Music Generation Info panel
 - 🎼 **AI Enhancement** — Automatic BPM and key setting
 - 🧠 **Thinking Mode** — Toggle ON/OFF to switch caption generation style

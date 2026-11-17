@@ -2,7 +2,7 @@
 LLM Service - 作詞・タグ生成サービス
 
 OpenAI互換APIを使用した歌詞生成とタグ推奨
-外部LLM接続失敗時はローカルGGUFモデル(Qwen3-1.7B)にフォールバック
+外部LLM接続失敗時はローカルGGUFモデル(Gemma 4 E4B Q4_0)にフォールバック
 """
 import json
 import logging
@@ -242,7 +242,7 @@ class LLMService:
         """
         LLMにチャットリクエストを送信
         
-        外部LLM失敗時はローカルLLM(Qwen3-1.7B GGUF)にフォールバック
+        外部LLM失敗時はローカルLLM(Gemma 4 E4B GGUF、thinking OFF)にフォールバック
         """
         # --local-llm モード: 外部LLMをスキップ
         if not settings.use_local_llm_only:

@@ -94,7 +94,7 @@ async def log_base_urls_on_startup():
     logger.info("ACE-Step API Base URL: %s", settings.ace_step_api_url)
     logger.info("Image API Base URL: %s", settings.image_generation_url)
     if settings.use_local_llm_only:
-        logger.info("LLM Mode: 内蔵LLM (Qwen3-1.7B) のみ")
+        logger.info("LLM Mode: 内蔵LLM (Gemma 4 E4B Q4_0) のみ")
     else:
         logger.info("LLM API Base URL: %s", settings.openai_base_url)
         logger.info("LLM Model: %s", settings.openai_chat_model)
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     print(f"   ACE-Step API: {settings.ace_step_api_url}")
     print(f"   Image API: {settings.image_generation_url}")
     if settings.use_local_llm_only:
-        print(f"   LLM: 内蔵LLM (Qwen3-1.7B) のみ")
+        print(f"   LLM: 内蔵LLM (Gemma 4 E4B Q4_0) のみ")
     else:
         print(f"   LLM API: {settings.openai_base_url}")
         print(f"   LLM Model: {settings.openai_chat_model}")
@@ -172,5 +172,8 @@ if __name__ == "__main__":
         "main:app",
         host=settings.host,
         port=settings.port,
-        reload=settings.debug
+        reload=settings.debug,
+        # Downloads (models/) and generated files must not restart the dev reloader:
+        # the GGUF download used to trigger a restart that downloaded it again.
+        reload_excludes=["models/*", "generated_backgrounds/*", ".venv/*"] if settings.debug else None,
     )

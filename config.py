@@ -54,7 +54,7 @@ def parse_args():
     parser.add_argument("--img-health-interval", type=float, default=None, help="画像生成APIヘルスチェック間隔秒 (default: 30)")
     
     # LLMモード
-    parser.add_argument("--local-llm", action="store_true", help="外部LLMを使わず内蔵LLM(Qwen3-1.7B)のみ使用")
+    parser.add_argument("--local-llm", action="store_true", help="外部LLMを使わず内蔵LLM(Gemma 4 E4B GGUF)のみ使用")
     
     # その他
     parser.add_argument("--no-reload", action="store_true", help="自動リロードを無効化")

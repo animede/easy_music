@@ -1,23 +1,32 @@
 """
 Local LLM Service - ローカル GGUF モデルによるフォールバック作詞
 
-外部 LLM に接続できない場合に Qwen3-1.7B (GGUF Q4_K_M) を使用して
-ローカルで歌詞・テーマを生成する。
+外部 LLM に接続できない場合に Gemma 4 E4B (GGUF Q4_0) を使用して
+ローカルで歌詞・テーマを生成する。thinking(reasoning)は常に OFF。
 
-初回利用時に HuggingFace から自動ダウンロード (~1.1GB)。
-x86 CPU のみで動作（GPU 不要、コンパイル不要）。
+初回利用時に HuggingFace から自動ダウンロード (~4.4GB)。
+CPU のみで動作（GPU 不要）。llama-cpp-python >= 0.3.34 が必要
+(それより古い llama.cpp は gemma4 アーキテクチャを知らない)。
 """
 import logging
 import os
+import re
 import asyncio
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
 # モデル設定
-MODEL_REPO = "unsloth/Qwen3-1.7B-GGUF"
-MODEL_FILE = "Qwen3-1.7B-Q4_K_M.gguf"
+MODEL_REPO = "ggml-org/gemma-4-E4B-it-GGUF"
+MODEL_FILE = "gemma-4-E4B-it-Q4_0.gguf"
+MODEL_SIZE_HINT = "~4.4GB"
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
+
+# Gemma 4 の思考チャネル / Qwen 系の <think> ブロック（念のため両方除去）
+_THOUGHT_RE = re.compile(
+    r"<\|channel>thought\n.*?<channel\|>\s*|<think>.*?</think>\s*",
+    flags=re.DOTALL,
+)
 
 
 class LocalLLMService:
@@ -51,7 +60,9 @@ class LocalLLMService:
         if os.path.exists(model_path):
             return model_path
 
-        logger.info(f"ローカルLLMモデルをダウンロード中: {MODEL_REPO}/{MODEL_FILE} (~1.1GB)")
+        logger.info(
+            f"ローカルLLMモデルをダウンロード中: {MODEL_REPO}/{MODEL_FILE} ({MODEL_SIZE_HINT})"
+        )
         os.makedirs(MODELS_DIR, exist_ok=True)
 
         from huggingface_hub import hf_hub_download
@@ -80,12 +91,12 @@ class LocalLLMService:
             logger.info(f"ローカルLLMをロード中: {model_path}")
             self._llm = Llama(
                 model_path=model_path,
-                n_ctx=4096,        # コンテキスト長（歌詞生成に十分）
-                n_threads=4,       # CPUスレッド数
+                n_ctx=8192,        # コンテキスト長（システムプロンプト + 歌詞に十分）
+                n_threads=max(4, (os.cpu_count() or 8) // 2),  # CPUスレッド数
                 n_gpu_layers=0,    # CPU のみ
                 verbose=False,
             )
-            logger.info("ローカルLLM ロード完了 (Qwen3-1.7B Q4_K_M)")
+            logger.info(f"ローカルLLM ロード完了 ({MODEL_FILE})")
             return True
         except Exception as e:
             logger.error(f"ローカルLLM ロード失敗: {e}")
@@ -131,24 +142,25 @@ class LocalLLMService:
     ) -> str:
         """同期的に推論を実行"""
         messages = [
-            {"role": "system", "content": system_prompt + "\n/no_think"},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ]
 
+        # GGUF 内蔵の Gemma 4 チャットテンプレートを使う。enable_thinking は
+        # テンプレート既定で false なので reasoning は OFF（<|think|> は出さない）。
         response = self._llm.create_chat_completion(
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
-            top_p=0.8,
-            top_k=20,
-            repeat_penalty=1.3,
+            top_p=0.95,
+            top_k=64,
+            repeat_penalty=1.1,
         )
 
         content = response["choices"][0]["message"]["content"]
 
-        # Qwen3 の <think>...</think> ブロックを除去（念のため）
-        import re
-        content = re.sub(r'<think>.*?</think>\s*', '', content, flags=re.DOTALL)
+        # 万一、思考チャネルが混ざった場合は除去
+        content = _THOUGHT_RE.sub("", content)
 
         return content.strip()
 

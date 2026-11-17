@@ -14,7 +14,7 @@ python-dotenv>=1.0.0
 itsdangerous>=2.0.0
 
 # ローカルLLMフォールバック（外部LLM接続不可時に使用）
-llama-cpp-python>=0.3.0
+llama-cpp-python>=0.3.34  # Gemma 4 GGUF needs llama.cpp >= b8637; older prebuilt wheels cannot load it
 huggingface_hub>=0.20.0
 
 # 歌詞テロップ（エネルギーエンベロープ解析）

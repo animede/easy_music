@@ -444,7 +444,7 @@ Change the "Language" setting to your desired language.
 
 ### Q: Do I need an external LLM?
 
-No. If the external LLM (e.g., Gemma) is unavailable, the app automatically falls back to a local LLM (Qwen3-1.7B). The first run downloads the model (~1.1 GB), which takes a few minutes.
+No. If the external LLM (e.g., Gemma) is unavailable, the app automatically falls back to a local LLM (Gemma 4 E4B, GGUF Q4_0, thinking off). The first run downloads the model (~4.4 GB). It runs on the CPU, so generation is slower.
 
 ### Q: I'm getting errors during generation
 
